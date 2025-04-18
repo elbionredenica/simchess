@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimChess - Simultaneous Chess</title>
+    <!-- Use CDN for chess.js and chessboard.js resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <header>
+        <h1>SimChess</h1>
+        <p>A chess variant where both players move simultaneously</p>
+    </header>
+    
+    <main>
+        <div class="game-container">
+            <div id="game-status" class="status">
+                <h2>Welcome to SimChess!</h2>
+                <p>Create a new game or join an existing one to start playing.</p>
+            </div>
+            
+            <div class="controls">
+                <button id="create-game">Create New Game</button>
+                <div id="join-game-container">
+                    <input type="text" id="game-id-input" placeholder="Enter Game ID">
+                    <button id="join-game">Join Game</button>
+                </div>
+            </div>
+            
+            <div id="game-id-display" class="hidden">
+                <p>Game ID: <span id="current-game-id"></span> 
+                <button id="copy-game-id">Copy</button></p>
+                <p class="help-text">To test: Open another browser window, paste this ID, and join as the second player.</p>
+            </div>
+            
+            <div id="game-board-container" class="hidden">
+                <div id="game-board" style="width: 600px"></div>
+                
+                <div class="game-info">
+                    <p>You are playing as: <span id="player-color">-</span></p>
+                    <p>Turn: <span id="turn-number">1</span><span id="attempt-number"></span></p>
+                    <p id="current-move" class="hidden">Your move: <span id="current-move-text">-</span></p>
+                    <p id="waiting-message" class="hidden">Waiting for opponent...</p>
+                    
+                    <div id="move-controls">
+                        <button id="submit-move" class="hidden">Submit Move</button>
+                        <button id="reset-move" class="hidden">Reset Move</button>
+                    </div>
+                    
+                    <div id="game-result" class="hidden">
+                        <h3>Game Over</h3>
+                        <p id="result-message"></p>
+                        <button id="new-game">Start New Game</button>
+                    </div>
+                </div>
+                
+                <div id="illegal-moves-info" class="hidden">
+                    <h3>Illegal Moves</h3>
+                    <p>White illegal moves: <span id="white-illegal">0</span>/3</p>
+                    <p>Black illegal moves: <span id="black-illegal">0</span>/3</p>
+                    <p id="illegal-move-reason" class="hidden"></p>
+                </div>
+                
+                <div id="help-section">
+                    <h3>How to Play SimChess</h3>
+                    <p>1. Drag a piece to make your move</p>
+                    <p>2. Click "Submit Move" when ready</p>
+                    <p>3. Both players submit moves simultaneously</p>
+                    <p>4. Conflicts (like moving to the same square) result in illegal moves</p>
+                    <p>5. Three illegal moves by a player results in a draw</p>
+                    <p>6. Standard chess rules apply otherwise</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        $(function() {
+            let socket;
+            let board;
+            let game;
+            let playerColor;
+            let gameId;
+            let currentMove = null;
+            let localChessGame = new Chess();
+            let allowMoves = true;
+            let attemptNumber = 0;
+            let pendingPosition = null;
+            
+            // Event handlers
+            $('#create-game').click(function() {
+                $.post('/api/create_game', function(data) {
+                    gameId = data.game_id;
+                    initializeSocket();
+                    $('#current-game-id').text(gameId);
+                    $('#game-id-display').removeClass('hidden');
+                    $('#game-status').html(`<h2>Game Created!</h2><p>Waiting for opponent to join...</p>`);
+                });
+            });
+            
+            $('#join-game').click(function() {
+                gameId = $('#game-id-input').val().trim();
+                if (gameId) {
+                    initializeSocket();
+                } else {
+                    alert('Please enter a Game ID');
+                }
+            });
+            
+            $('#copy-game-id').click(function() {
+                const gameIdText = $('#current-game-id').text();
+                navigator.clipboard.writeText(gameIdText).then(function() {
+                    $('#copy-game-id').text('Copied!');
+                    setTimeout(function() {
+                        $('#copy-game-id').text('Copy');
+                    }, 2000);
+                });
+            });
+            
+            $('#submit-move').click(function() {
+                if (currentMove) {
+                    socket.emit('submit_move', { 
+                        game_id: gameId, 
+                        color: playerColor, 
+                        move: currentMove 
+                    });
+                    
+                    // Store the pending position so we don't revert immediately
+                    pendingPosition = board.position();
+                    
+                    // Disable controls until next turn
+                    $('#submit-move').addClass('hidden');
+                    $('#reset-move').addClass('hidden');
+                    $('#waiting-message').removeClass('hidden');
+                    allowMoves = false;
+                } else {
+                    alert('Please make a move first');
+                }
+            });
+            
+            $('#reset-move').click(function() {
+                // Reset the current move
+                currentMove = null;
+                $('#current-move').addClass('hidden');
+                
+                // Reset the board position to the server's state
+                board.position(localChessGame.fen());
+                $('#submit-move').addClass('hidden');
+                $('#reset-move').addClass('hidden');
+            });
+            
+            $('#new-game').click(function() {
+                location.reload();
+            });
+            
+            function initializeSocket() {
+                socket = io();
+                
+                socket.on('connect', function() {
+                    socket.emit('join', { game_id: gameId });
+                });
+                
+                socket.on('joined', function(data) {
+                    playerColor = data.color;
+                    updateGameState(data.game_state);
+                    initializeBoard(data.game_state.fen || 'start');
+                    $('#game-board-container').removeClass('hidden');
+                    $('#player-color').text(playerColor);
+                    $('#game-status').html(`<h2>Game Started</h2><p>You are playing as ${playerColor}</p>`);
+                    allowMoves = true;
+                });
+                
+                socket.on('player_joined', function(data) {
+                    updateGameState(data.game_state);
+                    $('#game-status').html(`<h2>Game Started</h2><p>Opponent joined as ${data.color}</p>`);
+                    allowMoves = true;
+                });
+                
+                socket.on('move_submitted', function(data) {
+                    updateGameState(data.game_state);
+                    
+                    if (data.color !== playerColor) {
+                        $('#waiting-message').html('Opponent has submitted their move. Waiting for you...');
+                        $('#waiting-message').removeClass('hidden');
+                        allowMoves = true;
+                    }
+                });
+                
+                socket.on('moves_processed', function(data) {
+                    const result = data.result;
+                    
+                    // Only update the game state if both players made valid moves
+                    // or we're starting a completely new turn
+                    if (result.turn_complete || pendingPosition === null) {
+                        updateGameState(data.game_state);
+                        
+                        // Update the local chess game with the new FEN
+                        localChessGame = new Chess(data.game_state.fen);
+                        
+                        // Update board with new position
+                        if (board) {
+                            board.position(data.game_state.fen);
+                        }
+                    } else {
+                        // If the move wasn't completed (illegal moves), reset to the original position
+                        if (result.valid_moves && result.valid_moves[playerColor] === false) {
+                            // Reset the board to the previous valid state
+                            board.position(localChessGame.fen());
+                            pendingPosition = null;
+                            currentMove = null;
+                        }
+                        
+                        // Update the rest of the game state
+                        updateGameState(data.game_state, true);
+                    }
+                    
+                    // Reset current move
+                    currentMove = null;
+                    pendingPosition = null;
+                    $('#current-move').addClass('hidden');
+                    
+                    // Check if this was an illegal move attempt
+                    const turnNumberDisplay = data.game_state.turn_number;
+                    $('#turn-number').text(turnNumberDisplay);
+                    
+                    // Update attempt number if there are illegal moves
+                    attemptNumber = data.game_state.illegal_attempt || 0;
+                    if (attemptNumber > 0) {
+                        $('#attempt-number').text('.' + attemptNumber);
+                    } else {
+                        $('#attempt-number').text('');
+                    }
+                    
+                    // Show move results
+                    let statusHtml = `<h2>Turn ${turnNumberDisplay}${attemptNumber > 0 ? '.' + attemptNumber : ''}</h2>`;
+                    
+                    if (result.valid_moves && result.valid_moves[playerColor] === false) {
+                        const reason = result.illegal_reason[playerColor];
+                        $('#illegal-move-reason').text(`Your move was illegal: ${reason}`);
+                        $('#illegal-move-reason').removeClass('hidden');
+                        
+                        // Enable move controls for the player to try again
+                        allowMoves = true;
+                        $('#waiting-message').addClass('hidden');
+                    } else {
+                        $('#illegal-move-reason').addClass('hidden');
+                    }
+                    
+                    // Check for game end
+                    if (data.game_state.game_over) {
+                        if (data.game_state.winner) {
+                            const winMessage = data.game_state.winner === playerColor ? 
+                                'You won!' : 'You lost!';
+                            statusHtml += `<p><strong>${winMessage}</strong> Game ended by checkmate.</p>`;
+                            $('#result-message').text(`${data.game_state.winner} wins by checkmate!`);
+                        } else if (data.game_state.draw_reason) {
+                            statusHtml += `<p><strong>Game drawn</strong> by ${data.game_state.draw_reason}.</p>`;
+                            $('#result-message').text(`Draw by ${data.game_state.draw_reason}`);
+                        }
+                        
+                        $('#game-result').removeClass('hidden');
+                        $('#waiting-message').addClass('hidden');
+                    } else {
+                        // Reset for next turn
+                        allowMoves = true;
+                        $('#waiting-message').addClass('hidden');
+                    }
+                    
+                    $('#game-status').html(statusHtml);
+                    
+                    // Update illegal move counts
+                    $('#white-illegal').text(data.game_state.illegal_move_counts.white);
+                    $('#black-illegal').text(data.game_state.illegal_move_counts.black);
+                    
+                    if (data.game_state.illegal_move_counts.white > 0 || 
+                        data.game_state.illegal_move_counts.black > 0) {
+                        $('#illegal-moves-info').removeClass('hidden');
+                    }
+                });
+                
+                socket.on('error', function(data) {
+                    alert('Error: ' + data.message);
+                });
+            }
+            
+            function initializeBoard(initialPosition) {
+                // Initialize the chess game object
+                localChessGame = new Chess(initialPosition);
+                
+                function onDragStart(source, piece) {
+                    // Allow dragging only when moves are allowed
+                    if (!allowMoves) return false;
+                    
+                    // Only allow players to move their own pieces
+                    if ((playerColor === 'white' && piece.search(/^b/) !== -1) || 
+                        (playerColor === 'black' && piece.search(/^w/) !== -1)) {
+                        return false;
+                    }
+                    
+                    return true; // Allow the drag
+                }
+                
+                function onDrop(source, target) {
+                    // Check if the move follows basic chess rules
+                    const move = {
+                        from: source,
+                        to: target,
+                        promotion: 'q' // Always promote to queen for simplicity
+                    };
+                    
+                    // Create a temp board for move validation that matches the current display
+                    const tempBoard = new Chess(localChessGame.fen());
+                    
+                    // Manually set the turn to match the player's color
+                    // This allows black to make moves even when it's technically white's turn
+                    if (playerColor === 'black') {
+                        // We need to manually set black's turn for validation
+                        const fenParts = tempBoard.fen().split(' ');
+                        fenParts[1] = 'b'; // Set turn to black
+                        tempBoard.load(fenParts.join(' '));
+                    }
+                    
+                    // Check if this would be a legal move according to chess rules
+                    const moveObj = tempBoard.move(move);
+                    
+                    // If completely illegal move according to chess rules, snap back
+                    if (moveObj === null) return 'snapback';
+                    
+                    // Store the move in UCI format - ONLY add promotion if it's actually a promotion
+                    currentMove = source + target;
+                    
+                    // Only add promotion if it's a pawn move to the last rank
+                    const piece = tempBoard.get(target);
+                    const isPawnPromotion = 
+                        piece && 
+                        piece.type === 'p' && 
+                        ((target.charAt(1) === '8' && piece.color === 'w') || 
+                         (target.charAt(1) === '1' && piece.color === 'b'));
+                         
+                    if (isPawnPromotion && move.promotion) {
+                        currentMove += move.promotion;
+                    }
+                    
+                    // Show the move in the UI
+                    $('#current-move-text').text(`${source} to ${target}`);
+                    $('#current-move').removeClass('hidden');
+                    
+                    // Show submission controls
+                    $('#submit-move').removeClass('hidden');
+                    $('#reset-move').removeClass('hidden');
+                    
+                    // Don't snap back - leave the piece where it was dropped
+                    return true;
+                }
+                
+                // Configuration for the chessboard
+                const config = {
+                    position: initialPosition,
+                    orientation: playerColor === 'white' ? 'white' : 'black',
+                    showNotation: true,
+                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+                    draggable: true,
+                    onDragStart: onDragStart,
+                    onDrop: onDrop
+                };
+                
+                // Initialize the board
+                board = Chessboard('game-board', config);
+                
+                // Make the board responsive
+                $(window).resize(function() {
+                    board.resize();
+                });
+            }
+            
+            function updateGameState(gameState, preservePosition = false) {
+                $('#turn-number').text(gameState.turn_number);
+                
+                // Update attempt number if there are illegal moves
+                attemptNumber = gameState.illegal_attempt || 0;
+                if (attemptNumber > 0) {
+                    $('#attempt-number').text('.' + attemptNumber);
+                } else {
+                    $('#attempt-number').text('');
+                }
+                
+                // Update the board position only if we receive a new FEN state
+                // and we're not preserving the current position for visual feedback
+                if (gameState.fen && board && !preservePosition && !pendingPosition) {
+                    // Update the local chess game with the server's FEN
+                    localChessGame = new Chess(gameState.fen);
+                    // Update the board to the server's state
+                    board.position(gameState.fen);
+                    // Clear the current move since we've updated to the server state
+                    currentMove = null;
+                    $('#current-move').addClass('hidden');
+                }
+                
+                // Handle UI state based on move submission status
+                if (gameState.white_ready && gameState.black_ready) {
+                    // Both players have moved, hide waiting message
+                    $('#waiting-message').addClass('hidden');
+                } else if ((playerColor === 'white' && gameState.white_ready) || 
+                        (playerColor === 'black' && gameState.black_ready)) {
+                    // This player has submitted their move, waiting for opponent
+                    $('#waiting-message').text('Waiting for opponent to submit move...');
+                    $('#waiting-message').removeClass('hidden');
+                    $('#submit-move').addClass('hidden');
+                    $('#reset-move').addClass('hidden');
+                } else {
+                    // This player needs to submit a move
+                    $('#waiting-message').addClass('hidden');
+                    
+                    // Only show submit/reset buttons if the player has made a move
+                    if (currentMove) {
+                        $('#submit-move').removeClass('hidden');
+                        $('#reset-move').removeClass('hidden');
+                    } else {
+                        $('#submit-move').addClass('hidden');
+                        $('#reset-move').addClass('hidden');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
