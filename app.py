@@ -29,7 +29,15 @@ class SimChessGame:
         self.game_over = False
         self.winner = None
         self.draw_reason = None
+        # Deprecated: aggregate illegal moves (was used for draw on >=3). Kept for compatibility.
         self.illegal_move_counts = {"white": 0, "black": 0}
+        # New counters per updated rules
+        self.mutual_illegal_count = 0
+        self.one_sided_illegal_counts = {"white": 0, "black": 0}
+        self.one_sided_threshold = 3
+        self.one_sided_penalty_seconds = 30
+        # Simulated clocks (seconds remaining)
+        self.clock_seconds = {"white": 600, "black": 600}
         self.last_illegal_moves = {"white": None, "black": None}
     
     def assign_player(self, player_id):
@@ -97,7 +105,7 @@ class SimChessGame:
                 black_fen[1] = 'b'
                 black_board = chess.Board(' '.join(black_fen))
             
-            # RULE 1: Check if moves are to the same target square
+            # RULE 1: Check if moves are to the same target square (mutual illegality)
             if white_move.to_square == black_move.to_square:
                 logger.debug(f"CONFLICT: Both players moving to same square {chess.square_name(white_move.to_square)}")
                 result["valid_moves"]["white"] = False
@@ -105,15 +113,20 @@ class SimChessGame:
                 reason = f"Conflict: both moving to {chess.square_name(white_move.to_square)}"
                 result["illegal_reason"]["white"] = reason
                 result["illegal_reason"]["black"] = reason
-                self.illegal_move_counts["white"] += 1
-                self.illegal_move_counts["black"] += 1
+                # Count as mutual illegality only
+                self.mutual_illegal_count += 1
                 self.last_illegal_moves["white"] = white_move_str
                 self.last_illegal_moves["black"] = black_move_str
                 self.illegal_attempt += 1
                 result["illegal_attempt"] = self.illegal_attempt
+                result["illegality_type"] = "mutual"
+                # Clear submissions so both must resubmit; include current FEN
+                self.moves = {"white": None, "black": None}
+                self.ready_status = {"white": False, "black": False}
+                result["fen"] = self.board.fen()
                 return result
                 
-            # RULE 2: Check for reciprocal captures
+            # RULE 2: Check for reciprocal captures (mutual illegality)
             if (white_move.to_square == black_move.from_square and 
                 black_move.to_square == white_move.from_square):
                 logger.debug("CONFLICT: Reciprocal captures")
@@ -122,12 +135,17 @@ class SimChessGame:
                 reason = "Conflict: reciprocal captures"
                 result["illegal_reason"]["white"] = reason
                 result["illegal_reason"]["black"] = reason
-                self.illegal_move_counts["white"] += 1
-                self.illegal_move_counts["black"] += 1
+                # Count as mutual illegality only
+                self.mutual_illegal_count += 1
                 self.last_illegal_moves["white"] = white_move_str
                 self.last_illegal_moves["black"] = black_move_str
                 self.illegal_attempt += 1
                 result["illegal_attempt"] = self.illegal_attempt
+                result["illegality_type"] = "mutual"
+                # Clear submissions so both must resubmit; include current FEN
+                self.moves = {"white": None, "black": None}
+                self.ready_status = {"white": False, "black": False}
+                result["fen"] = self.board.fen()
                 return result
                 
             # RULE 3: Check if white move is valid
@@ -135,7 +153,7 @@ class SimChessGame:
                 logger.debug(f"White move {white_move} is not legal")
                 result["valid_moves"]["white"] = False
                 result["illegal_reason"]["white"] = "Not a legal chess move"
-                self.illegal_move_counts["white"] += 1
+                # Do not count yet; classification happens below
                 self.last_illegal_moves["white"] = white_move_str
             
             # RULE 4: Check if black move is valid
@@ -143,13 +161,38 @@ class SimChessGame:
                 logger.debug(f"Black move {black_move} is not legal")
                 result["valid_moves"]["black"] = False
                 result["illegal_reason"]["black"] = "Not a legal chess move"
-                self.illegal_move_counts["black"] += 1
+                # Do not count yet; classification happens below
                 self.last_illegal_moves["black"] = black_move_str
             
-            # If any move was illegal, increment attempt counter
+            # If any move was illegal, classify as mutual or one-sided and apply penalties if needed
             if not result["valid_moves"]["white"] or not result["valid_moves"]["black"]:
                 self.illegal_attempt += 1
                 result["illegal_attempt"] = self.illegal_attempt
+                white_illegal = not result["valid_moves"]["white"]
+                black_illegal = not result["valid_moves"]["black"]
+                if white_illegal and black_illegal:
+                    # Both are illegal: mutual illegality
+                    self.mutual_illegal_count += 1
+                    result["illegality_type"] = "mutual"
+                else:
+                    # Exactly one side is illegal
+                    offender = "white" if white_illegal else "black"
+                    self.one_sided_illegal_counts[offender] += 1
+                    result["illegality_type"] = "one_sided"
+                    # Optional: keep deprecated aggregate in sync with one-sided only
+                    self.illegal_move_counts[offender] = self.one_sided_illegal_counts[offender]
+                    # Apply penalty if threshold reached
+                    if self.one_sided_illegal_counts[offender] >= self.one_sided_threshold:
+                        self.clock_seconds[offender] = max(0, self.clock_seconds[offender] - self.one_sided_penalty_seconds)
+                        self.one_sided_illegal_counts[offender] = 0
+                        result["penalty_applied"] = {
+                            "color": offender,
+                            "seconds": self.one_sided_penalty_seconds
+                        }
+                # Clear submissions so both must resubmit; include current FEN
+                self.moves = {"white": None, "black": None}
+                self.ready_status = {"white": False, "black": False}
+                result["fen"] = self.board.fen()
                 return result
             
             # If we get here, both moves are valid, so apply them
@@ -215,12 +258,7 @@ class SimChessGame:
             result["illegal_reason"]["white"] = reason
             result["illegal_reason"]["black"] = reason
         
-        # Check for repeated illegal moves
-        if self.illegal_move_counts["white"] >= 3 or self.illegal_move_counts["black"] >= 3:
-            self.game_over = True
-            self.draw_reason = "repeated illegal moves"
-            result["draw"] = True
-            result["draw_reason"] = "repeated illegal moves"
+        # No automatic draw on illegalities under new rules
         
         # Reset for next turn
         self.moves = {"white": None, "black": None}
@@ -244,7 +282,13 @@ class SimChessGame:
             "winner": self.winner,
             "draw_reason": self.draw_reason,
             "illegal_move_counts": self.illegal_move_counts,
-            "last_illegal_moves": self.last_illegal_moves
+            "last_illegal_moves": self.last_illegal_moves,
+            # New state fields
+            "mutual_illegal_count": self.mutual_illegal_count,
+            "one_sided_illegal_counts": self.one_sided_illegal_counts,
+            "one_sided_threshold": self.one_sided_threshold,
+            "penalty_seconds": self.one_sided_penalty_seconds,
+            "clock_seconds": self.clock_seconds
         }
 
 @app.route('/')

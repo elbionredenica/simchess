@@ -61,9 +61,11 @@
                 </div>
                 
                 <div id="illegal-moves-info" class="hidden">
-                    <h3>Illegal Moves</h3>
-                    <p>White illegal moves: <span id="white-illegal">0</span>/3</p>
-                    <p>Black illegal moves: <span id="black-illegal">0</span>/3</p>
+                    <h3>Illegality & Time</h3>
+                    <p>Mutual illegalities: <span id="mutual-illegal">0</span></p>
+                    <p>One-sided (white): <span id="white-one-illegal">0</span>/<span id="one-threshold">3</span></p>
+                    <p>One-sided (black): <span id="black-one-illegal">0</span>/<span id="one-threshold-2">3</span></p>
+                    <p>Clocks — White: <span id="white-clock">10:00</span> | Black: <span id="black-clock">10:00</span></p>
                     <p id="illegal-move-reason" class="hidden"></p>
                 </div>
                 
@@ -72,8 +74,8 @@
                     <p>1. Drag a piece to make your move</p>
                     <p>2. Click "Submit Move" when ready</p>
                     <p>3. Both players submit moves simultaneously</p>
-                    <p>4. Conflicts (like moving to the same square) result in illegal moves</p>
-                    <p>5. Three illegal moves by a player results in a draw</p>
+                    <p>4. Mutual conflicts (e.g., same target square) are mutual illegalities and reset the ply</p>
+                    <p>5. One-sided illegalities are counted per player; at 3, a -30s penalty applies and the counter resets</p>
                     <p>6. Standard chess rules apply otherwise</p>
                 </div>
             </div>
@@ -194,6 +196,7 @@
                 
                 socket.on('moves_processed', function(data) {
                     const result = data.result;
+                    const state = data.game_state;
                     
                     // Only update the game state if both players made valid moves
                     // or we're starting a completely new turn
@@ -208,16 +211,13 @@
                             board.position(data.game_state.fen);
                         }
                     } else {
-                        // If the move wasn't completed (illegal moves), reset to the original position
-                        if (result.valid_moves && result.valid_moves[playerColor] === false) {
-                            // Reset the board to the previous valid state
-                            board.position(localChessGame.fen());
-                            pendingPosition = null;
-                            currentMove = null;
-                        }
+                        // Illegality (mutual or one-sided): both clients revert to last legal state
+                        board.position(localChessGame.fen());
+                        pendingPosition = null;
+                        currentMove = null;
                         
-                        // Update the rest of the game state
-                        updateGameState(data.game_state, true);
+                        // Update UI state from server
+                        updateGameState(data.game_state);
                     }
                     
                     // Reset current move
@@ -251,6 +251,13 @@
                     } else {
                         $('#illegal-move-reason').addClass('hidden');
                     }
+
+                    // Penalty feedback
+                    if (result.penalty_applied) {
+                        const penalized = result.penalty_applied.color;
+                        const secs = result.penalty_applied.seconds;
+                        statusHtml += `<p>Penalty: -${secs}s applied to ${penalized} for repeated one-sided illegality.</p>`;
+                    }
                     
                     // Check for game end
                     if (data.game_state.game_over) {
@@ -274,12 +281,21 @@
                     
                     $('#game-status').html(statusHtml);
                     
-                    // Update illegal move counts
-                    $('#white-illegal').text(data.game_state.illegal_move_counts.white);
-                    $('#black-illegal').text(data.game_state.illegal_move_counts.black);
-                    
-                    if (data.game_state.illegal_move_counts.white > 0 || 
-                        data.game_state.illegal_move_counts.black > 0) {
+                    // Update new illegality counters and clocks
+                    $('#mutual-illegal').text(state.mutual_illegal_count || 0);
+                    if (state.one_sided_illegal_counts) {
+                        $('#white-one-illegal').text(state.one_sided_illegal_counts.white || 0);
+                        $('#black-one-illegal').text(state.one_sided_illegal_counts.black || 0);
+                    }
+                    const threshold = state.one_sided_threshold || 3;
+                    $('#one-threshold').text(threshold);
+                    $('#one-threshold-2').text(threshold);
+                    if (state.clock_seconds) {
+                        $('#white-clock').text(formatSeconds(state.clock_seconds.white));
+                        $('#black-clock').text(formatSeconds(state.clock_seconds.black));
+                    }
+                    if ((state.mutual_illegal_count || 0) > 0 ||
+                        (state.one_sided_illegal_counts && (state.one_sided_illegal_counts.white > 0 || state.one_sided_illegal_counts.black > 0))) {
                         $('#illegal-moves-info').removeClass('hidden');
                     }
                 });
@@ -307,44 +323,19 @@
                 }
                 
                 function onDrop(source, target) {
-                    // Check if the move follows basic chess rules
-                    const move = {
-                        from: source,
-                        to: target,
-                        promotion: 'q' // Always promote to queen for simplicity
-                    };
-                    
-                    // Create a temp board for move validation that matches the current display
-                    const tempBoard = new Chess(localChessGame.fen());
-                    
-                    // Manually set the turn to match the player's color
-                    // This allows black to make moves even when it's technically white's turn
-                    if (playerColor === 'black') {
-                        // We need to manually set black's turn for validation
-                        const fenParts = tempBoard.fen().split(' ');
-                        fenParts[1] = 'b'; // Set turn to black
-                        tempBoard.load(fenParts.join(' '));
-                    }
-                    
-                    // Check if this would be a legal move according to chess rules
-                    const moveObj = tempBoard.move(move);
-                    
-                    // If completely illegal move according to chess rules, snap back
-                    if (moveObj === null) return 'snapback';
-                    
-                    // Store the move in UCI format - ONLY add promotion if it's actually a promotion
+                    // Accept the intention without strict legality checks (simultaneous rules)
+                    // Build UCI string
                     currentMove = source + target;
                     
-                    // Only add promotion if it's a pawn move to the last rank
-                    const piece = tempBoard.get(target);
-                    const isPawnPromotion = 
-                        piece && 
-                        piece.type === 'p' && 
-                        ((target.charAt(1) === '8' && piece.color === 'w') || 
-                         (target.charAt(1) === '1' && piece.color === 'b'));
-                         
-                    if (isPawnPromotion && move.promotion) {
-                        currentMove += move.promotion;
+                    // Add promotion only if the moving piece is a pawn reaching last rank
+                    const pieceAtSource = localChessGame.get(source);
+                    if (pieceAtSource && pieceAtSource.type === 'p') {
+                        const rank = target.charAt(1);
+                        const isWhite = pieceAtSource.color === 'w';
+                        const isPromotionRank = (isWhite && rank === '8') || (!isWhite && rank === '1');
+                        if (isPromotionRank) {
+                            currentMove += 'q';
+                        }
                     }
                     
                     // Show the move in the UI
@@ -426,6 +417,13 @@
                         $('#reset-move').addClass('hidden');
                     }
                 }
+            }
+
+            function formatSeconds(totalSeconds) {
+                const s = Math.max(0, parseInt(totalSeconds || 0, 10));
+                const m = Math.floor(s / 60);
+                const sec = s % 60;
+                return `${m}:${sec.toString().padStart(2, '0')}`;
             }
         });
     </script>
