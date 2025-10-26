@@ -4,6 +4,7 @@ from flask_cors import CORS
 import chess
 import uuid
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -354,4 +355,7 @@ def on_submit_move(data):
         }, room=game_id)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # Get port from environment variable (Render sets PORT)
+    port = int(os.environ.get('PORT', 10000))
+    # Use eventlet for production
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
