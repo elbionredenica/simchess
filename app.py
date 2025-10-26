@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = 'simchess-secret!'
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Use eventlet in production, threading for local dev
+try:
+    import eventlet
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+except ImportError:
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Store games in memory (for MVP)
 games = {}
@@ -357,5 +362,5 @@ def on_submit_move(data):
 if __name__ == '__main__':
     # Get port from environment variable (Render sets PORT)
     port = int(os.environ.get('PORT', 10000))
-    # Use eventlet for production
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    # Use eventlet for production WebSocket support
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
