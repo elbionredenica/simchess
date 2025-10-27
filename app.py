@@ -213,6 +213,9 @@ class SimChessGame:
                 white_fen[1] = 'w'
                 new_board = chess.Board(' '.join(white_fen))
             
+            # Get SAN notation for white's move before pushing it
+            white_move_san = new_board.san(white_move)
+            
             # Push white's move
             new_board.push(white_move)
             
@@ -221,6 +224,9 @@ class SimChessGame:
                 black_fen = list(new_board.fen().split())
                 black_fen[1] = 'b'
                 new_board = chess.Board(' '.join(black_fen))
+            
+            # Get SAN notation for black's move before pushing it
+            black_move_san = new_board.san(black_move)
             
             # Push black's move
             new_board.push(black_move)
@@ -232,6 +238,12 @@ class SimChessGame:
             self.illegal_attempt = 0
             self.turn_number += 1
             result["turn_complete"] = True
+            
+            # Add SAN notation to result
+            result["moves_san"] = {
+                "white": white_move_san,
+                "black": black_move_san
+            }
             
             # Check for checkmate
             if self.board.is_checkmate():
