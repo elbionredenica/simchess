@@ -1,4 +1,10 @@
 $(function () {
+    // TIME CONTROL CONFIGURATION - Change this value to test different time formats
+    // 600 = 10 minutes, 60 = 1 minute, 10 = 10 seconds, etc.
+    const TIME_CONTROL = 600; // Change this to 10 for testing 10 second games
+    const ABORT_TIME = 30; // Game aborts if no moves in first 60 seconds
+    const ABORT_WARNING_TIME = 15; // Show warning at 50 seconds
+    
     let socket;
     let board;
     let game;
@@ -12,6 +18,19 @@ $(function () {
     let moveHistory = []; // Store legal moves history
     let currentMoveIndex = -1; // Current position in history
     let isViewingHistory = false; // Flag to track if we're viewing history
+
+    // Clock variables
+    let whiteTimeSeconds = TIME_CONTROL;
+    let blackTimeSeconds = TIME_CONTROL;
+    let whiteClockInterval = null;
+    let blackClockInterval = null;
+    let whiteClockRunning = false;
+    let blackClockRunning = false;
+    
+    // Abort timer
+    let abortTimer = null;
+    let gameStartTime = null;
+    let firstMoveMade = false;
 
     // Event handlers
     $('#create-game').click(function () {
@@ -35,40 +54,66 @@ $(function () {
     });
 
     $('#copy-game-id').click(function () {
-        const gameIdText = $('#current-game-id').text();
-        navigator.clipboard.writeText(gameIdText).then(function () {
-            const btn = $('#copy-game-id');
-            const originalHtml = btn.html();
-            btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
-            setTimeout(function () {
-                btn.html(originalHtml);
-            }, 2000);
-        });
-    });
-
-    $('#copy-game-id-active').click(function () {
-        const gameIdText = $('#current-game-id-active').text();
-        navigator.clipboard.writeText(gameIdText).then(function () {
-            const btn = $('#copy-game-id-active');
-            const originalHtml = btn.html();
-            btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
-            setTimeout(function () {
-                btn.html(originalHtml);
-            }, 2000);
-        });
+        const gameIdText = $('#current-game-id').text().trim();
+        const btn = $('#copy-game-id');
+        const originalHtml = btn.html();
+        
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(gameIdText).then(function () {
+                btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
+                setTimeout(function () {
+                    btn.html(originalHtml);
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Clipboard API failed, trying fallback:', err);
+                copyToClipboardFallback(gameIdText, btn, originalHtml);
+            });
+        } else {
+            // Use fallback for older browsers
+            copyToClipboardFallback(gameIdText, btn, originalHtml);
+        }
     });
 
     $('#copy-game-id-header').click(function () {
-        const gameIdText = $('#header-game-id-text').text();
-        navigator.clipboard.writeText(gameIdText).then(function () {
-            const btn = $('#copy-game-id-header');
-            const originalHtml = btn.html();
-            btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>');
+        const gameIdText = $('#header-game-id-text').text().trim();
+        const btn = $('#copy-game-id-header');
+        const originalHtml = btn.html();
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(gameIdText).then(function () {
+                btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>');
+                setTimeout(function () {
+                    btn.html(originalHtml);
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Clipboard API failed, trying fallback:', err);
+                copyToClipboardFallback(gameIdText, btn, originalHtml);
+            });
+        } else {
+            copyToClipboardFallback(gameIdText, btn, originalHtml);
+        }
+    });
+    
+    // Clipboard fallback function
+    function copyToClipboardFallback(text, btn, originalHtml) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
             setTimeout(function () {
                 btn.html(originalHtml);
             }, 2000);
-        });
-    });
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+        }
+        document.body.removeChild(textArea);
+    }
 
     // Help modal handlers
     $('#help-button').click(function () {
@@ -271,14 +316,23 @@ $(function () {
 
     $('#submit-move').click(function () {
         if (currentMove) {
+            firstMoveMade = true; // Mark that first move was made
+            
             socket.emit('submit_move', {
                 game_id: gameId,
                 color: playerColor,
-                move: currentMove
+                move: currentMove,
+                clock_seconds: {
+                    white: whiteTimeSeconds,
+                    black: blackTimeSeconds
+                }
             });
 
             // Store the pending position so we don't revert immediately
             pendingPosition = board.position();
+
+            // Stop the current player's clock when they submit
+            stopPlayerClock(playerColor);
 
             // Disable controls until next turn
             $('#submit-move').addClass('hidden');
@@ -324,6 +378,9 @@ $(function () {
             $('#game-board-container').removeClass('hidden');
             $('#player-color').text(playerColor);
 
+            // Don't initialize clocks from server - use local TIME_CONTROL
+            // Clocks are already set to TIME_CONTROL at initialization
+
             // Initialize board after container is visible
             setTimeout(function () {
                 initializeBoard(data.game_state.fen || 'start');
@@ -342,8 +399,24 @@ $(function () {
 
         socket.on('player_joined', function (data) {
             updateGameState(data.game_state);
-            $('#game-status').html(`<h2>Game Started</h2><p>Opponent joined as ${data.color}</p>`);
+            // Don't overwrite game-status here - let abort timer handle it
             allowMoves = true;
+
+            // Don't sync clocks from server - we're using local TIME_CONTROL
+            // Both clients have their own TIME_CONTROL value
+
+            // Start both clocks for simultaneous play
+            startBothClocks();
+            
+            // Emit to other player to also start clocks
+            socket.emit('start_clocks', { game_id: gameId });
+        });
+        
+        socket.on('clocks_started', function (data) {
+            // Both players should have their clocks running
+            if (!whiteClockRunning || !blackClockRunning) {
+                startBothClocks();
+            }
         });
 
         socket.on('move_submitted', function (data) {
@@ -354,11 +427,46 @@ $(function () {
                 $('#waiting-message').removeClass('hidden');
                 allowMoves = true;
             }
+            
+            // Sync: if opponent submitted, their clock should be stopped
+            // This syncs the visual state across both clients
+            if (data.color === 'white') {
+                stopPlayerClock('white');
+            } else if (data.color === 'black') {
+                stopPlayerClock('black');
+            }
         });
 
         socket.on('moves_processed', function (data) {
             const result = data.result;
             const state = data.game_state;
+
+            // Sync clocks if penalty was applied or if server sends clock data
+            if (result.penalty_applied && state.clock_seconds) {
+                syncClockFromServer(state.clock_seconds.white, state.clock_seconds.black);
+            }
+            
+            // Check for game over from illegality rules (draw by 3 mutual or timeout from penalty)
+            if (result.game_over || result.draw || result.winner) {
+                stopAllClocks();
+                let title, subtitle, isWin = false;
+                
+                if (result.draw) {
+                    title = 'Draw';
+                    subtitle = `Game drawn by ${result.draw_reason}`;
+                    showGameOverModal(title, subtitle, false, state.turn_number);
+                } else if (result.winner) {
+                    isWin = result.winner === playerColor;
+                    title = isWin ? 'Victory!' : 'Defeat';
+                    subtitle = `${result.winner.charAt(0).toUpperCase() + result.winner.slice(1)} wins by ${result.win_reason || 'timeout'}`;
+                    showGameOverModal(title, subtitle, isWin, state.turn_number);
+                }
+                
+                $('#game-result').removeClass('hidden');
+                $('#result-message').text(subtitle);
+                allowMoves = false;
+                return;
+            }
 
             // Only update the game state if both players made valid moves
             // or we're starting a completely new turn
@@ -447,9 +555,22 @@ $(function () {
                 statusHtml += `<p>Penalty: -${secs}s applied to ${penalized} for repeated one-sided illegality.</p>`;
             }
 
-            // Check for game end
+            // Update new illegality counters
+            $('#mutual-illegal').text(state.mutual_illegal_count || 0);
+            if (state.one_sided_illegal_counts) {
+                $('#white-one-illegal').text(state.one_sided_illegal_counts.white || 0);
+                $('#black-one-illegal').text(state.one_sided_illegal_counts.black || 0);
+            }
+            const threshold = state.one_sided_threshold || 3;
+            $('#one-threshold').text(threshold);
+            $('#one-threshold-2').text(threshold);
+
+            // Check for game end before resuming clock
             if (data.game_state.game_over) {
                 let title, subtitle, isWin = false;
+
+                // Stop all clocks on game over
+                stopAllClocks();
 
                 if (data.game_state.winner) {
                     isWin = data.game_state.winner === playerColor;
@@ -478,27 +599,12 @@ $(function () {
                 // Reset for next turn
                 allowMoves = true;
                 $('#waiting-message').addClass('hidden');
+
+                // Restart both clocks for simultaneous play
+                startBothClocks();
             }
 
             $('#game-status').html(statusHtml);
-
-            // Update new illegality counters and clocks
-            $('#mutual-illegal').text(state.mutual_illegal_count || 0);
-            if (state.one_sided_illegal_counts) {
-                $('#white-one-illegal').text(state.one_sided_illegal_counts.white || 0);
-                $('#black-one-illegal').text(state.one_sided_illegal_counts.black || 0);
-            }
-            const threshold = state.one_sided_threshold || 3;
-            $('#one-threshold').text(threshold);
-            $('#one-threshold-2').text(threshold);
-            if (state.clock_seconds) {
-                $('#white-clock').text(formatSeconds(state.clock_seconds.white));
-                $('#black-clock').text(formatSeconds(state.clock_seconds.black));
-            }
-            if ((state.mutual_illegal_count || 0) > 0 ||
-                (state.one_sided_illegal_counts && (state.one_sided_illegal_counts.white > 0 || state.one_sided_illegal_counts.black > 0))) {
-                $('#illegal-moves-info').removeClass('hidden');
-            }
         });
 
         socket.on('game_state_update', function (data) {
@@ -507,8 +613,16 @@ $(function () {
 
             updateGameState(gameState);
 
+            // Only sync clocks if there's a penalty or game is starting
+            if (gameState.clock_seconds && (gameState.mutual_illegal_count > 0 || gameState.one_sided_illegal_counts.white > 0 || gameState.one_sided_illegal_counts.black > 0)) {
+                syncClockFromServer(gameState.clock_seconds.white, gameState.clock_seconds.black);
+            }
+
             if (gameState.game_over) {
                 let title, subtitle, isWin = false;
+
+                // Stop all clocks on game over
+                stopAllClocks();
 
                 // Handle formatting of winner name
                 const winner = gameState.winner || 'Unknown';
@@ -667,5 +781,180 @@ $(function () {
         const m = Math.floor(s / 60);
         const sec = s % 60;
         return `${m}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    // Clock management functions
+    function startBothClocks() {
+        // Start both clocks for simultaneous play
+        startPlayerClock('white');
+        startPlayerClock('black');
+        
+        // Start abort timer if this is the start of the game
+        if (!gameStartTime && moveHistory.length <= 1) {
+            gameStartTime = Date.now();
+            startAbortTimer();
+        }
+    }
+    
+    function startAbortTimer() {
+        // Check for abort every second
+        abortTimer = setInterval(function() {
+            if (firstMoveMade) {
+                clearInterval(abortTimer);
+                abortTimer = null;
+                // Hide all abort toasts
+                $('#abort-warning-toast').addClass('hidden');
+                $('#abort-urgent-toast').addClass('hidden');
+                return;
+            }
+            
+            const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+            const remaining = ABORT_TIME - elapsed;
+            
+            console.log(`Abort timer - elapsed: ${elapsed}s, remaining: ${remaining}s`);
+            
+            if (remaining <= 0) {
+                // Abort the game
+                clearInterval(abortTimer);
+                abortTimer = null;
+                stopAllClocks();
+                // Hide toasts
+                $('#abort-warning-toast').addClass('hidden');
+                $('#abort-urgent-toast').addClass('hidden');
+                showGameOverModal('Game Aborted', 'No moves made', false, 0);
+                allowMoves = false;
+            } else if (remaining <= 10) {
+                // Show urgent toast in last 10 seconds
+                $('#abort-warning-toast').addClass('hidden');
+                $('#abort-urgent-toast').removeClass('hidden');
+                $('#abort-urgent-countdown').text(Math.ceil(remaining));
+            } else if (elapsed >= ABORT_WARNING_TIME) {
+                // Show warning toast after ABORT_WARNING_TIME seconds have elapsed
+                $('#abort-urgent-toast').addClass('hidden');
+                $('#abort-warning-toast').removeClass('hidden');
+                $('#abort-countdown').text(Math.ceil(remaining) + 's');
+            }
+        }, 1000);
+    }
+
+    function startPlayerClock(color) {
+        if (color === 'white' && !whiteClockRunning) {
+            whiteClockRunning = true;
+            $('#white-clock-container').addClass('active');
+            $('#white-clock-status').removeClass('hidden');
+            
+            whiteClockInterval = setInterval(function() {
+                whiteTimeSeconds = Math.max(0, whiteTimeSeconds - 1);
+                updateClockDisplay('white', whiteTimeSeconds);
+
+                if (whiteTimeSeconds <= 0) {
+                    stopPlayerClock('white');
+                    handleTimeOut('white');
+                }
+            }, 1000);
+        } else if (color === 'black' && !blackClockRunning) {
+            blackClockRunning = true;
+            $('#black-clock-container').addClass('active');
+            $('#black-clock-status').removeClass('hidden');
+            
+            blackClockInterval = setInterval(function() {
+                blackTimeSeconds = Math.max(0, blackTimeSeconds - 1);
+                updateClockDisplay('black', blackTimeSeconds);
+
+                if (blackTimeSeconds <= 0) {
+                    stopPlayerClock('black');
+                    handleTimeOut('black');
+                }
+            }, 1000);
+        }
+    }
+
+    function stopPlayerClock(color) {
+        if (color === 'white') {
+            if (whiteClockInterval) {
+                clearInterval(whiteClockInterval);
+                whiteClockInterval = null;
+            }
+            whiteClockRunning = false;
+            $('#white-clock-container').removeClass('active');
+            $('#white-clock-status').addClass('hidden');
+        } else if (color === 'black') {
+            if (blackClockInterval) {
+                clearInterval(blackClockInterval);
+                blackClockInterval = null;
+            }
+            blackClockRunning = false;
+            $('#black-clock-container').removeClass('active');
+            $('#black-clock-status').addClass('hidden');
+        }
+    }
+
+    function stopAllClocks() {
+        stopPlayerClock('white');
+        stopPlayerClock('black');
+    }
+
+    function updateClockDisplay(color, seconds) {
+        const timeStr = formatSeconds(seconds);
+        $(`#${color}-clock`).text(timeStr);
+
+        // Add warning animation if time is low (under 60 seconds)
+        if (seconds <= 60 && seconds > 0) {
+            $(`#${color}-clock`).addClass('clock-warning');
+        } else {
+            $(`#${color}-clock`).removeClass('clock-warning');
+        }
+    }
+
+    function syncClockFromServer(whiteSeconds, blackSeconds) {
+        // Initialize clocks from server (only on first join or significant changes like penalties)
+        const whiteChanged = Math.abs(whiteTimeSeconds - whiteSeconds) > 2;
+        const blackChanged = Math.abs(blackTimeSeconds - blackSeconds) > 2;
+        
+        if (whiteChanged) {
+            whiteTimeSeconds = whiteSeconds;
+            updateClockDisplay('white', whiteTimeSeconds);
+        }
+        if (blackChanged) {
+            blackTimeSeconds = blackSeconds;
+            updateClockDisplay('black', blackTimeSeconds);
+        }
+    }
+
+    function initClockFromServer(whiteSeconds, blackSeconds) {
+        // Force set clocks on initial join (before game starts)
+        whiteTimeSeconds = whiteSeconds;
+        blackTimeSeconds = blackSeconds;
+        updateClockDisplay('white', whiteTimeSeconds);
+        updateClockDisplay('black', blackTimeSeconds);
+    }
+
+    function handleTimeOut(color) {
+        // Stop all clocks
+        stopAllClocks();
+        
+        // Determine winner (opponent of player who timed out)
+        const winner = color === 'white' ? 'black' : 'white';
+        const isWin = winner === playerColor;
+        
+        const title = isWin ? 'Victory!' : 'Defeat';
+        const subtitle = `${winner.charAt(0).toUpperCase() + winner.slice(1)} wins on time`;
+        
+        // Show game over modal
+        showGameOverModal(title, subtitle, isWin, moveHistory.length);
+        
+        // Update game status
+        $('#game-status').html(`<h2>Game Over</h2><p><strong>${color.charAt(0).toUpperCase() + color.slice(1)} ran out of time!</strong></p>`);
+        $('#result-message').text(subtitle);
+        $('#game-result').removeClass('hidden');
+        allowMoves = false;
+        
+        // Emit time out event to server
+        if (socket) {
+            socket.emit('time_out', {
+                game_id: gameId,
+                color: color
+            });
+        }
     }
 });

@@ -77,6 +77,29 @@
         </div>
     </header>
 
+    <!-- Abort Warning Toast -->
+    <div id="abort-warning-toast" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
+        <div class="bg-yellow-500/90 text-black px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-pulse">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span id="abort-warning-text" class="font-bold">Make your first move!</span>
+            <span id="abort-countdown" class="font-mono font-bold text-lg">10s</span>
+        </div>
+    </div>
+
+    <!-- Abort Urgent Toast (last 10 seconds) -->
+    <div id="abort-urgent-toast" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
+        <div class="bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-bounce">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="font-bold">Game aborting in</span>
+            <span id="abort-urgent-countdown" class="font-mono font-bold text-2xl">10</span>
+            <span class="font-bold">seconds!</span>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="flex-1 overflow-y-auto">
         <div class="max-w-[1600px] mx-auto px-6 py-8">
@@ -209,7 +232,7 @@
                             </div>
                         </div>
 
-                        <div id="illegal-moves-info" class="hidden glass-effect rounded-2xl p-4">
+                        <div id="illegal-moves-info" class="glass-effect rounded-2xl p-4">
                             <h3 class="text-base font-bold mb-3 flex items-center gap-2">
                                 <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -234,23 +257,42 @@
                                     <span class="font-bold text-blue-100"><span id="black-one-illegal">0</span>/<span
                                             id="one-threshold-2">3</span></span>
                                 </div>
-                                <div class="bg-blue-950/50 border border-blue-500/20 rounded-lg p-2 mt-3">
-                                    <div class="flex justify-between items-center mb-1.5">
-                                        <span class="text-blue-300/70">⚪ White</span>
-                                        <span id="white-clock" class="font-mono font-bold text-blue-100">10:00</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-blue-300/70">⚫ Black</span>
-                                        <span id="black-clock" class="font-mono font-bold text-blue-100">10:00</span>
-                                    </div>
-                                </div>
                             </div>
 
                         </div>
                     </div>
 
                     <!-- Center - Chess Board -->
-                    <div class="lg:col-span-6 flex flex-col items-center justify-start">
+                    <div class="lg:col-span-6 flex flex-col items-center justify-start space-y-4">
+                        <!-- Chess Clocks -->
+                        <div class="w-full max-w-[650px] grid grid-cols-2 gap-4">
+                            <!-- White Clock -->
+                            <div id="white-clock-container" class="glass-effect rounded-xl p-4 border-2 border-gray-300/30 bg-gradient-to-br from-gray-100/10 to-white/5">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-3 h-3 rounded-full bg-white shadow-lg"></div>
+                                        <span class="text-sm font-semibold text-gray-200">White</span>
+                                    </div>
+                                    <div id="white-clock-status" class="hidden">
+                                        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                    </div>
+                                </div>
+                                <div id="white-clock" class="text-3xl font-bold font-mono text-white mt-2 tracking-wider">10:00</div>
+                            </div>
+                            <!-- Black Clock -->
+                            <div id="black-clock-container" class="glass-effect rounded-xl p-4 border-2 border-gray-800/50 bg-gradient-to-br from-gray-900/80 to-black/60">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-3 h-3 rounded-full bg-gray-900 border border-gray-600 shadow-lg"></div>
+                                        <span class="text-sm font-semibold text-gray-300">Black</span>
+                                    </div>
+                                    <div id="black-clock-status" class="hidden">
+                                        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                                    </div>
+                                </div>
+                                <div id="black-clock" class="text-3xl font-bold font-mono text-white mt-2 tracking-wider">10:00</div>
+                            </div>
+                        </div>
                         <div
                             class="chess-board-container w-full h-full flex items-center justify-center bg-transparent">
                             <div id="game-board" style="width: 100%; max-width: 650px;"></div>

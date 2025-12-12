@@ -55,6 +55,36 @@ class SimChessGame:
         # Position history for threefold repetition (only legal positions)
         self.position_history = [self._get_position_key()]
     
+    def _handle_mutual_illegality(self, result, white_move_str, black_move_str, reason):
+        """Handle mutual illegality: increment counter, check for draw, prepare result."""
+        self.mutual_illegal_count += 1
+        self.last_illegal_moves["white"] = white_move_str
+        self.last_illegal_moves["black"] = black_move_str
+        self.illegal_attempt += 1
+        
+        result["valid_moves"]["white"] = False
+        result["valid_moves"]["black"] = False
+        result["illegal_reason"]["white"] = reason
+        result["illegal_reason"]["black"] = reason
+        result["illegal_attempt"] = self.illegal_attempt
+        result["illegality_type"] = "mutual"
+        result["mutual_illegal_count"] = self.mutual_illegal_count
+        
+        # Check for draw on 3 mutual illegalities within the same turn
+        if self.mutual_illegal_count >= 3:
+            self.game_over = True
+            self.draw_reason = "3 mutual illegalities"
+            result["draw"] = True
+            result["draw_reason"] = "3 mutual illegalities"
+            result["game_over"] = True
+        
+        # Clear submissions so both must resubmit
+        self.moves = {"white": None, "black": None}
+        self.ready_status = {"white": False, "black": False}
+        result["fen"] = self.board.fen()
+        result["clock_seconds"] = self.clock_seconds
+        return result
+    
     def assign_player(self, player_id):
         if self.players["white"] is None:
             self.players["white"] = player_id
@@ -239,45 +269,15 @@ class SimChessGame:
             # RULE 1: Check if moves are to the same target square (mutual illegality)
             if white_move.to_square == black_move.to_square:
                 logger.debug(f"CONFLICT: Both players moving to same square {chess.square_name(white_move.to_square)}")
-                result["valid_moves"]["white"] = False
-                result["valid_moves"]["black"] = False
                 reason = f"Conflict: both moving to {chess.square_name(white_move.to_square)}"
-                result["illegal_reason"]["white"] = reason
-                result["illegal_reason"]["black"] = reason
-                # Count as mutual illegality only
-                self.mutual_illegal_count += 1
-                self.last_illegal_moves["white"] = white_move_str
-                self.last_illegal_moves["black"] = black_move_str
-                self.illegal_attempt += 1
-                result["illegal_attempt"] = self.illegal_attempt
-                result["illegality_type"] = "mutual"
-                # Clear submissions so both must resubmit; include current FEN
-                self.moves = {"white": None, "black": None}
-                self.ready_status = {"white": False, "black": False}
-                result["fen"] = self.board.fen()
-                return result
+                return self._handle_mutual_illegality(result, white_move_str, black_move_str, reason)
                 
             # RULE 2: Check for reciprocal captures (mutual illegality)
             if (white_move.to_square == black_move.from_square and 
                 black_move.to_square == white_move.from_square):
                 logger.debug("CONFLICT: Reciprocal captures")
-                result["valid_moves"]["white"] = False
-                result["valid_moves"]["black"] = False
                 reason = "Conflict: reciprocal captures"
-                result["illegal_reason"]["white"] = reason
-                result["illegal_reason"]["black"] = reason
-                # Count as mutual illegality only
-                self.mutual_illegal_count += 1
-                self.last_illegal_moves["white"] = white_move_str
-                self.last_illegal_moves["black"] = black_move_str
-                self.illegal_attempt += 1
-                result["illegal_attempt"] = self.illegal_attempt
-                result["illegality_type"] = "mutual"
-                # Clear submissions so both must resubmit; include current FEN
-                self.moves = {"white": None, "black": None}
-                self.ready_status = {"white": False, "black": False}
-                result["fen"] = self.board.fen()
-                return result
+                return self._handle_mutual_illegality(result, white_move_str, black_move_str, reason)
             
             # RULE 2.5: Check if capture target moves away (capture target escaped)
             # LOGIC UPDATE: Only PAWN captures fail if target escapes (because diagonal pawn move requires piece).
@@ -299,21 +299,8 @@ class SimChessGame:
                 # If it's a pawn capture, it's illegal because target is gone
                 if is_pawn_capture(self.board, white_move):
                     logger.debug(f"CONFLICT: White's PAWN capture target on {chess.square_name(white_move.to_square)} escaped")
-                    result["valid_moves"]["white"] = False
-                    result["valid_moves"]["black"] = False
                     reason = f"Conflict: pawn capture target on {chess.square_name(white_move.to_square)} moved away"
-                    result["illegal_reason"]["white"] = reason
-                    result["illegal_reason"]["black"] = reason
-                    self.mutual_illegal_count += 1
-                    self.last_illegal_moves["white"] = white_move_str
-                    self.last_illegal_moves["black"] = black_move_str
-                    self.illegal_attempt += 1
-                    result["illegal_attempt"] = self.illegal_attempt
-                    result["illegality_type"] = "mutual"
-                    self.moves = {"white": None, "black": None}
-                    self.ready_status = {"white": False, "black": False}
-                    result["fen"] = self.board.fen()
-                    return result
+                    return self._handle_mutual_illegality(result, white_move_str, black_move_str, reason)
                 else:
                     logger.debug(f"Target escaped but White move {white_move} is piece move, allowing as non-capture")
             
@@ -322,21 +309,8 @@ class SimChessGame:
                 # If it's a pawn capture, it's illegal because target is gone
                 if is_pawn_capture(self.board, black_move):
                     logger.debug(f"CONFLICT: Black's PAWN capture target on {chess.square_name(black_move.to_square)} escaped")
-                    result["valid_moves"]["white"] = False
-                    result["valid_moves"]["black"] = False
                     reason = f"Conflict: pawn capture target on {chess.square_name(black_move.to_square)} moved away"
-                    result["illegal_reason"]["white"] = reason
-                    result["illegal_reason"]["black"] = reason
-                    self.mutual_illegal_count += 1
-                    self.last_illegal_moves["white"] = white_move_str
-                    self.last_illegal_moves["black"] = black_move_str
-                    self.illegal_attempt += 1
-                    result["illegal_attempt"] = self.illegal_attempt
-                    result["illegality_type"] = "mutual"
-                    self.moves = {"white": None, "black": None}
-                    self.ready_status = {"white": False, "black": False}
-                    result["fen"] = self.board.fen()
-                    return result
+                    return self._handle_mutual_illegality(result, white_move_str, black_move_str, reason)
                 else:
                     logger.debug(f"Target escaped but Black move {black_move} is piece move, allowing as non-capture")
             
@@ -363,20 +337,7 @@ class SimChessGame:
                 
                 if path_collision:
                     logger.debug(f"CONFLICT: Path collision - {collision_reason}")
-                    result["valid_moves"]["white"] = False
-                    result["valid_moves"]["black"] = False
-                    result["illegal_reason"]["white"] = collision_reason
-                    result["illegal_reason"]["black"] = collision_reason
-                    self.mutual_illegal_count += 1
-                    self.last_illegal_moves["white"] = white_move_str
-                    self.last_illegal_moves["black"] = black_move_str
-                    self.illegal_attempt += 1
-                    result["illegal_attempt"] = self.illegal_attempt
-                    result["illegality_type"] = "mutual"
-                    self.moves = {"white": None, "black": None}
-                    self.ready_status = {"white": False, "black": False}
-                    result["fen"] = self.board.fen()
-                    return result
+                    return self._handle_mutual_illegality(result, white_move_str, black_move_str, collision_reason)
                 
             # RULE 4 & 5: Check move validity with PATH-OPENING support
             # In SimChess, we use PSEUDO-LEGAL moves - you CAN move into check (gambling)
@@ -449,33 +410,43 @@ class SimChessGame:
             
             # If any move was illegal, classify as mutual or one-sided and apply penalties if needed
             if not result["valid_moves"]["white"] or not result["valid_moves"]["black"]:
-                self.illegal_attempt += 1
-                result["illegal_attempt"] = self.illegal_attempt
                 white_illegal = not result["valid_moves"]["white"]
                 black_illegal = not result["valid_moves"]["black"]
                 if white_illegal and black_illegal:
-                    # Both are illegal: mutual illegality
-                    self.mutual_illegal_count += 1
-                    result["illegality_type"] = "mutual"
+                    # Both are illegal: mutual illegality - use helper method
+                    reason = result["illegal_reason"]["white"] or result["illegal_reason"]["black"] or "Mutual illegality"
+                    return self._handle_mutual_illegality(result, white_move_str, black_move_str, reason)
                 else:
                     # Exactly one side is illegal
+                    self.illegal_attempt += 1
+                    result["illegal_attempt"] = self.illegal_attempt
                     offender = "white" if white_illegal else "black"
                     self.one_sided_illegal_counts[offender] += 1
                     result["illegality_type"] = "one_sided"
                     # Optional: keep deprecated aggregate in sync with one-sided only
                     self.illegal_move_counts[offender] = self.one_sided_illegal_counts[offender]
-                    # Apply penalty if threshold reached
+                    # Apply penalty if threshold reached (3/3)
                     if self.one_sided_illegal_counts[offender] >= self.one_sided_threshold:
                         self.clock_seconds[offender] = max(0, self.clock_seconds[offender] - self.one_sided_penalty_seconds)
+                        # Reset to 0 after penalty applied
                         self.one_sided_illegal_counts[offender] = 0
                         result["penalty_applied"] = {
                             "color": offender,
                             "seconds": self.one_sided_penalty_seconds
                         }
+                        # Check for time out due to penalty
+                        if self.clock_seconds[offender] <= 0:
+                            self.game_over = True
+                            self.winner = "black" if offender == "white" else "white"
+                            self.win_reason = "timeout"
+                            result["game_over"] = True
+                            result["winner"] = self.winner
+                            result["win_reason"] = "timeout"
                 # Clear submissions so both must resubmit; include current FEN
                 self.moves = {"white": None, "black": None}
                 self.ready_status = {"white": False, "black": False}
                 result["fen"] = self.board.fen()
+                result["clock_seconds"] = self.clock_seconds
                 return result
             
             # If we get here, both moves are valid, so apply them
@@ -521,6 +492,8 @@ class SimChessGame:
             
             # Reset illegal attempt counter and increment turn number
             self.illegal_attempt = 0
+            # Reset mutual illegality count on successful turn (per-turn counter)
+            self.mutual_illegal_count = 0
             self.turn_number += 1
             result["turn_complete"] = True
             
@@ -690,6 +663,7 @@ def on_submit_move(data):
     game_id = data['game_id']
     color = data['color']
     move = data['move']
+    client_clocks = data.get('clock_seconds')
     
     logger.debug(f"Received move: {color}={move} for game {game_id}")
     
@@ -698,6 +672,14 @@ def on_submit_move(data):
         return
     
     game = games[game_id]
+    
+    # Update server clocks from client values if provided
+    if client_clocks:
+        if client_clocks.get('white') is not None:
+            game.clock_seconds['white'] = client_clocks['white']
+        if client_clocks.get('black') is not None:
+            game.clock_seconds['black'] = client_clocks['black']
+    
     result = game.submit_move(color, move)
     
     # Update both players about the move submission
@@ -712,6 +694,36 @@ def on_submit_move(data):
             'result': result,
             'game_state': game.get_state()
         }, room=game_id)
+
+@socketio.on('start_clocks')
+def on_start_clocks(data):
+    game_id = data['game_id']
+    if game_id in games:
+        # Broadcast to all players in the game to start their clocks
+        emit('clocks_started', {}, room=game_id)
+
+@socketio.on('time_out')
+def on_time_out(data):
+    game_id = data['game_id']
+    color = data['color']
+    
+    if game_id not in games:
+        return
+    
+    game = games[game_id]
+    
+    # Determine winner (opponent of player who timed out)
+    winner = 'black' if color == 'white' else 'white'
+    
+    # Set game over state
+    game.game_over = True
+    game.winner = winner
+    game.win_reason = 'timeout'
+    
+    # Broadcast game over to all players
+    emit('game_state_update', {
+        'game_state': game.get_state()
+    }, room=game_id)
 
 if __name__ == '__main__':
     # Get port from environment variable (Render sets PORT)

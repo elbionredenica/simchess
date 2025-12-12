@@ -54,3 +54,35 @@ html {
         opacity: .5;
     }
 }
+
+/* Chess Clock Styling */
+#white-clock-container {
+    transition: all 0.3s ease;
+}
+
+#white-clock-container.active {
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2);
+}
+
+#black-clock-container {
+    transition: all 0.3s ease;
+}
+
+#black-clock-container.active {
+    border-color: rgba(100, 116, 139, 0.8);
+    box-shadow: 0 0 20px rgba(100, 116, 139, 0.5), 0 0 40px rgba(100, 116, 139, 0.3);
+}
+
+.clock-warning {
+    animation: clock-pulse 1s ease-in-out infinite;
+}
+
+@keyframes clock-pulse {
+    0%, 100% {
+        color: #ef4444;
+    }
+    50% {
+        color: #fca5a5;
+    }
+}
