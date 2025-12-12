@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SimChess - Simultaneous Chess</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -30,71 +31,19 @@
             }
         }
     </script>
-    
+
     <!-- Chess libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        
-        html {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
-            overflow: hidden;
-        }
-        
-        * {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%);
-        }
-        
-        .glass-effect {
-            background: rgba(30, 58, 138, 0.15);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }
-        
-        .chess-board-container {
-            box-shadow: 0 20px 60px rgba(37, 99, 235, 0.4), 0 0 80px rgba(59, 130, 246, 0.2);
-            border-radius: 16px;
-            overflow: hidden;
-            border: 2px solid rgba(96, 165, 250, 0.3);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.6);
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
-        }
-        
-        .pulse-animation {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: .5;
-            }
-        }
-    </style>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 h-screen text-white overflow-hidden flex flex-col">
+
+<body
+    class="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 h-screen text-white overflow-hidden flex flex-col">
     <!-- Header -->
     <header class="py-6 px-4 border-b border-blue-500/20 bg-slate-950/50 backdrop-blur-sm">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
@@ -108,766 +57,375 @@
                         <span id="header-game-id-text" class="text-sm font-mono text-blue-100"></span>
                         <button id="copy-game-id-header" class="text-blue-400 hover:text-blue-300 transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                </path>
                             </svg>
                         </button>
                     </div>
                 </div>
-                <button id="help-button" class="w-10 h-10 rounded-lg bg-cyan-600/20 hover:bg-cyan-500/30 border border-cyan-400/30 flex items-center justify-center transition-all" title="How to Play">
+                <button id="help-button"
+                    class="w-10 h-10 rounded-lg bg-cyan-600/20 hover:bg-cyan-500/30 border border-cyan-400/30 flex items-center justify-center transition-all"
+                    title="How to Play">
                     <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
                     </svg>
                 </button>
             </div>
         </div>
     </header>
-    
+
     <!-- Main Content -->
     <main class="flex-1 overflow-y-auto">
-        <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Welcome Screen -->
-        <div id="welcome-screen" class="max-w-2xl mx-auto">
-            <div class="glass-effect rounded-2xl p-8 mb-6">
-                <div id="game-status" class="text-center mb-8">
-                    <h2 class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Welcome to SimChess!</h2>
-                    <p class="text-blue-200/80">Create a new game or join an existing one to start playing.</p>
-                </div>
-                
-                <div class="space-y-4">
-                    <button id="create-game" class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg">
-                        <span class="flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                            </svg>
-                            Create New Game
-                        </span>
-                    </button>
-                    
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-600"></div>
+        <div class="max-w-[1600px] mx-auto px-6 py-8">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="max-w-2xl mx-auto">
+                <div class="glass-effect rounded-2xl p-8 mb-6">
+                    <div id="game-status" class="text-center mb-8">
+                        <h2
+                            class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                            Welcome to SimChess!</h2>
+                        <p class="text-blue-200/80">Create a new game or join an existing one to start playing.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button id="create-game"
+                            class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg">
+                            <span class="flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Create New Game
+                            </span>
+                        </button>
+
+                        <div class="relative">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-gray-600"></div>
+                            </div>
+                            <div class="relative flex justify-center text-sm">
+                                <span class="px-4 bg-slate-900/50 text-gray-400">or</span>
+                            </div>
                         </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-4 bg-slate-900/50 text-gray-400">or</span>
+
+                        <div class="flex gap-3">
+                            <input type="text" id="game-id-input" placeholder="Enter Game ID"
+                                class="flex-1 bg-blue-950/30 border border-blue-500/30 rounded-xl px-4 py-3 text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <button id="join-game"
+                                class="bg-blue-600/50 hover:bg-blue-500/60 text-white font-semibold px-6 py-3 rounded-xl transition-all border border-blue-400/30">
+                                Join
+                            </button>
                         </div>
                     </div>
-                    
-                    <div class="flex gap-3">
-                        <input type="text" id="game-id-input" placeholder="Enter Game ID" 
-                               class="flex-1 bg-blue-950/30 border border-blue-500/30 rounded-xl px-4 py-3 text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <button id="join-game" class="bg-blue-600/50 hover:bg-blue-500/60 text-white font-semibold px-6 py-3 rounded-xl transition-all border border-blue-400/30">
-                            Join
+                </div>
+
+                <div id="game-id-display" class="hidden glass-effect rounded-2xl p-6 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-blue-300/70 mb-1">Game ID</p>
+                            <p class="text-xl font-mono font-bold text-blue-100" id="current-game-id"></p>
+                        </div>
+                        <button id="copy-game-id"
+                            class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            Copy
                         </button>
                     </div>
+                    <p class="text-sm text-blue-300/60 mt-4">Share this ID with your opponent to start playing</p>
                 </div>
             </div>
-            
-            <div id="game-id-display" class="hidden glass-effect rounded-2xl p-6 mb-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-blue-300/70 mb-1">Game ID</p>
-                        <p class="text-xl font-mono font-bold text-blue-100" id="current-game-id"></p>
-                    </div>
-                    <button id="copy-game-id" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                        </svg>
-                        Copy
-                    </button>
-                </div>
-                <p class="text-sm text-blue-300/60 mt-4">Share this ID with your opponent to start playing</p>
-            </div>
-        </div>
-        
-        <!-- Game Board -->
-        <div id="game-board-container" class="hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Left Sidebar - Game Info & Statistics -->
-                <div class="lg:col-span-3 space-y-4">
-                    <div class="glass-effect rounded-2xl p-4">
-                        <h3 class="text-base font-bold mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Game Info
-                        </h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
-                                <span class="text-blue-300/70">Playing as</span>
-                                <span id="player-color" class="font-bold capitalize text-blue-100">-</span>
-                            </div>
-                            <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
-                                <span class="text-blue-300/70">Turn</span>
-                                <span class="font-bold text-blue-100"><span id="turn-number">1</span><span id="attempt-number"></span></span>
-                            </div>
-                            <div id="current-move" class="hidden bg-blue-500/20 border border-blue-400/40 rounded-lg p-2">
-                                <p class="text-xs text-blue-200/70">Your move</p>
-                                <p id="current-move-text" class="font-mono font-bold text-blue-50">-</p>
-                            </div>
-                            <div id="waiting-message" class="hidden bg-cyan-500/20 border border-cyan-400/40 rounded-lg p-2 pulse-animation">
-                                <p class="text-xs text-cyan-100">Waiting for opponent...</p>
-                            </div>
-                        </div>
-                        
-                        <div id="move-controls" class="mt-3 space-y-2">
-                            <button id="submit-move" class="hidden w-full btn-primary text-white font-semibold py-2 px-3 rounded-lg text-sm">
-                                Submit Move
-                            </button>
-                            <button id="reset-move" class="hidden w-full bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 font-semibold py-2 px-3 rounded-lg transition-all text-sm">
-                                Reset Move
-                            </button>
-                        </div>
-                        
-                        <div id="game-result" class="hidden mt-3 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-400/40 rounded-xl p-3">
-                            <h3 class="text-lg font-bold mb-2 text-emerald-100">Game Over</h3>
-                            <p id="result-message" class="text-blue-200 mb-3 text-sm"></p>
-                            <button id="new-game" class="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-semibold py-2 px-3 rounded-lg transition-all shadow-lg shadow-emerald-500/30 text-sm">
-                                Start New Game
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="illegal-moves-info" class="hidden glass-effect rounded-2xl p-4">
-                        <h3 class="text-base font-bold mb-3 flex items-center gap-2">
-                            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            Statistics
-                        </h3>
-                        <div class="space-y-2 text-xs">
-                            <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                <span class="text-blue-300/70">Mutual illegalities</span>
-                                <span id="mutual-illegal" class="font-bold text-blue-100">0</span>
-                            </div>
-                            <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                <span class="text-blue-300/70">White one-sided</span>
-                                <span class="font-bold text-blue-100"><span id="white-one-illegal">0</span>/<span id="one-threshold">3</span></span>
-                            </div>
-                            <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                <span class="text-blue-300/70">Black one-sided</span>
-                                <span class="font-bold text-blue-100"><span id="black-one-illegal">0</span>/<span id="one-threshold-2">3</span></span>
-                            </div>
-                            <div class="bg-blue-950/50 border border-blue-500/20 rounded-lg p-2 mt-3">
-                                <div class="flex justify-between items-center mb-1.5">
-                                    <span class="text-blue-300/70">⚪ White</span>
-                                    <span id="white-clock" class="font-mono font-bold text-blue-100">10:00</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-blue-300/70">⚫ Black</span>
-                                    <span id="black-clock" class="font-mono font-bold text-blue-100">10:00</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="illegal-move-reason" class="hidden mt-3 bg-red-500/20 border border-red-400/40 rounded-lg p-2 text-xs text-red-200"></div>
-                    </div>
-                </div>
-                
-                <!-- Center - Chess Board -->
-                <div class="lg:col-span-6 flex flex-col items-center justify-start">
-                    <div class="chess-board-container w-full">
-                        <div id="game-board" style="width: 100%;"></div>
-                    </div>
-                    
-                    <!-- Move History Navigation -->
-                    <div class="w-full mt-4 glass-effect rounded-2xl p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-base font-bold flex items-center gap-2">
-                                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+
+            <!-- Game Board -->
+            <div id="game-board-container" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- Left Sidebar - Game Info & Stats -->
+                    <div class="lg:col-span-3 space-y-3 h-full flex flex-col">
+                        <div class="glass-effect rounded-2xl p-4">
+                            <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Move History
+                                Game Info
                             </h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
+                                    <span class="text-blue-300/70">Playing as</span>
+                                    <span id="player-color" class="font-bold capitalize text-blue-100">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
+                                    <span class="text-blue-300/70">Turn</span>
+                                    <span class="font-bold text-blue-100"><span id="turn-number">1</span><span
+                                            id="attempt-number"></span></span>
+                                </div>
+                                <div id="current-move"
+                                    class="hidden bg-blue-500/20 border border-blue-400/40 rounded-lg p-2">
+                                    <p class="text-xs text-blue-200/70">Your move</p>
+                                    <p id="current-move-text" class="font-mono font-bold text-blue-50">-</p>
+                                </div>
+                                <div id="waiting-message"
+                                    class="hidden bg-cyan-500/20 border border-cyan-400/40 rounded-lg p-2 pulse-animation">
+                                    <p class="text-xs text-cyan-100">Waiting for opponent...</p>
+                                </div>
+                            </div>
+
+                            <div id="move-controls" class="mt-3 space-y-2">
+                                <button id="submit-move"
+                                    class="hidden w-full btn-primary text-white font-semibold py-2 px-3 rounded-lg text-sm">
+                                    Submit Move
+                                </button>
+                                <button id="reset-move"
+                                    class="hidden w-full bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 font-semibold py-2 px-3 rounded-lg transition-all text-sm">
+                                    Reset Move
+                                </button>
+                                <div class="pt-2">
+                                    <button id="resign-game"
+                                        class="w-full bg-red-900/30 hover:bg-red-800/40 border border-red-500/30 text-red-200 font-semibold py-2 px-3 rounded-lg transition-all text-sm flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        Resign Game
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="game-result"
+                                class="hidden mt-3 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-400/40 rounded-xl p-3">
+                                <h3 class="text-lg font-bold mb-2 text-emerald-100">Game Over</h3>
+                                <p id="result-message" class="text-blue-200 mb-3 text-sm"></p>
+                                <button id="new-game"
+                                    class="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-semibold py-2 px-3 rounded-lg transition-all shadow-lg shadow-emerald-500/30 text-sm">
+                                    Start New Game
+                                </button>
+                            </div>
                         </div>
-                        <div id="move-list" class="bg-blue-950/30 rounded-lg p-3 mb-3 min-h-[100px] max-h-[150px] overflow-y-auto text-sm">
-                            <p class="text-blue-300/50 text-center py-4">No moves yet</p>
+
+                        <div id="illegal-moves-info" class="hidden glass-effect rounded-2xl p-4">
+                            <h3 class="text-base font-bold mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                    </path>
+                                </svg>
+                                Statistics
+                            </h3>
+                            <div class="space-y-2 text-xs">
+                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
+                                    <span class="text-blue-300/70">Mutual illegalities</span>
+                                    <span id="mutual-illegal" class="font-bold text-blue-100">0</span>
+                                </div>
+                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
+                                    <span class="text-blue-300/70">White one-sided</span>
+                                    <span class="font-bold text-blue-100"><span id="white-one-illegal">0</span>/<span
+                                            id="one-threshold">3</span></span>
+                                </div>
+                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
+                                    <span class="text-blue-300/70">Black one-sided</span>
+                                    <span class="font-bold text-blue-100"><span id="black-one-illegal">0</span>/<span
+                                            id="one-threshold-2">3</span></span>
+                                </div>
+                                <div class="bg-blue-950/50 border border-blue-500/20 rounded-lg p-2 mt-3">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <span class="text-blue-300/70">⚪ White</span>
+                                        <span id="white-clock" class="font-mono font-bold text-blue-100">10:00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-blue-300/70">⚫ Black</span>
+                                        <span id="black-clock" class="font-mono font-bold text-blue-100">10:00</span>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-                        <div class="flex gap-2">
-                            <button id="move-first" class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-2 px-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-                                </svg>
-                            </button>
-                            <button id="move-prev" class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-2 px-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                                </svg>
-                            </button>
-                            <button id="move-next" class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-2 px-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </button>
-                            <button id="move-last" class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-2 px-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-                                </svg>
-                            </button>
+                    </div>
+
+                    <!-- Center - Chess Board -->
+                    <div class="lg:col-span-6 flex flex-col items-center justify-start">
+                        <div
+                            class="chess-board-container w-full h-full flex items-center justify-center bg-transparent">
+                            <div id="game-board" style="width: 100%; max-width: 650px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Sidebar - History -->
+                    <div class="lg:col-span-3 h-full flex flex-col">
+                        <div class="glass-effect rounded-2xl p-3 flex-1 flex flex-col min-h-[300px]">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-base font-bold flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    History
+                                </h3>
+                            </div>
+                            <div id="move-list"
+                                class="bg-blue-950/30 rounded-lg p-2 mb-2 flex-1 overflow-y-auto text-xs font-mono">
+                                <p class="text-blue-300/50 text-center py-4">No moves yet</p>
+                            </div>
+                            <div class="flex gap-1">
+                                <button id="move-first"
+                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                                    </svg>
+                                </button>
+                                <button id="move-prev"
+                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 19l-7-7 7-7"></path>
+                                    </svg>
+                                </button>
+                                <button id="move-next"
+                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </button>
+                                <button id="move-last"
+                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Right Sidebar - Spacer for balance (hidden on mobile) -->
-                <div class="lg:col-span-3 hidden lg:block"></div>
             </div>
         </div>
-        
+
         <!-- How to Play Modal -->
-        <div id="help-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="help-modal"
+            class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div class="glass-effect rounded-2xl p-6 max-w-md w-full">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xl font-bold flex items-center gap-2">
                         <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
                         </svg>
                         How to Play
                     </h3>
                     <button id="close-help-modal" class="text-blue-300/70 hover:text-blue-100 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 <div class="space-y-3 text-sm text-blue-200/80">
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">1</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            1</div>
                         <p>Drag a piece to make your move</p>
                     </div>
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">2</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            2</div>
                         <p>Click "Submit Move" when ready</p>
                     </div>
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">3</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            3</div>
                         <p>Both players submit moves simultaneously</p>
                     </div>
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">4</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            4</div>
                         <p>Mutual conflicts (same target square) reset the ply</p>
                     </div>
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">5</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            5</div>
                         <p>After 3 one-sided illegal moves, -30s penalty applies</p>
                     </div>
                     <div class="flex gap-3">
-                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">6</div>
+                        <div
+                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
+                            6</div>
                         <p>Standard chess rules apply otherwise</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Modal (Dramatic) -->
+        <div id="game-over-modal"
+            class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="relative">
+                <!-- Animated glow effect -->
+                <div
+                    class="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-3xl blur-xl animate-pulse">
+                </div>
+
+                <div
+                    class="relative glass-effect rounded-3xl p-8 max-w-lg w-full text-center border-2 border-blue-400/40 shadow-2xl shadow-blue-500/20">
+                    <!-- Crown/Trophy icon for winner -->
+                    <div id="game-over-icon" class="mb-6">
+                        <div
+                            class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-500/50">
+                            <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3H5v2h14v-2z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Main title -->
+                    <h2 id="game-over-title"
+                        class="text-4xl font-extrabold mb-3 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+                        Victory!
+                    </h2>
+
+                    <!-- Subtitle / reason -->
+                    <p id="game-over-subtitle" class="text-xl text-blue-200/90 mb-6">
+                        White wins by checkmate
+                    </p>
+
+                    <!-- Additional info -->
+                    <div id="game-over-stats" class="bg-blue-950/50 rounded-xl p-4 mb-6 text-sm text-blue-200/70">
+                        <p>Game completed in <span id="game-over-turns">0</span> moves</p>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-3 justify-center">
+                        <button id="game-over-new-game"
+                            class="btn-primary text-white font-semibold py-3 px-8 rounded-xl">
+                            New Game
+                        </button>
+                        <button id="game-over-close"
+                            class="bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 font-semibold py-3 px-6 rounded-xl transition-all">
+                            Review Board
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
         </div>
     </main>
-    
-    <script>
-        $(function() {
-            let socket;
-            let board;
-            let game;
-            let playerColor;
-            let gameId;
-            let currentMove = null;
-            let localChessGame = new Chess();
-            let allowMoves = true;
-            let attemptNumber = 0;
-            let pendingPosition = null;
-            let moveHistory = []; // Store legal moves history
-            let currentMoveIndex = -1; // Current position in history
-            let isViewingHistory = false; // Flag to track if we're viewing history
-            
-            // Event handlers
-            $('#create-game').click(function() {
-                $.post('/api/create_game', function(data) {
-                    gameId = data.game_id;
-                    initializeSocket();
-                    $('#current-game-id').text(gameId);
-                    $('#game-id-display').removeClass('hidden');
-                    $('#game-status h2').html('Game Created!');
-                    $('#game-status p').html('Waiting for opponent to join...');
-                });
-            });
-            
-            $('#join-game').click(function() {
-                gameId = $('#game-id-input').val().trim();
-                if (gameId) {
-                    initializeSocket();
-                } else {
-                    alert('Please enter a Game ID');
-                }
-            });
-            
-            $('#copy-game-id').click(function() {
-                const gameIdText = $('#current-game-id').text();
-                navigator.clipboard.writeText(gameIdText).then(function() {
-                    const btn = $('#copy-game-id');
-                    const originalHtml = btn.html();
-                    btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
-                    setTimeout(function() {
-                        btn.html(originalHtml);
-                    }, 2000);
-                });
-            });
-            
-            $('#copy-game-id-active').click(function() {
-                const gameIdText = $('#current-game-id-active').text();
-                navigator.clipboard.writeText(gameIdText).then(function() {
-                    const btn = $('#copy-game-id-active');
-                    const originalHtml = btn.html();
-                    btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!');
-                    setTimeout(function() {
-                        btn.html(originalHtml);
-                    }, 2000);
-                });
-            });
-            
-            $('#copy-game-id-header').click(function() {
-                const gameIdText = $('#header-game-id-text').text();
-                navigator.clipboard.writeText(gameIdText).then(function() {
-                    const btn = $('#copy-game-id-header');
-                    const originalHtml = btn.html();
-                    btn.html('<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>');
-                    setTimeout(function() {
-                        btn.html(originalHtml);
-                    }, 2000);
-                });
-            });
-            
-            // Help modal handlers
-            $('#help-button').click(function() {
-                $('#help-modal').removeClass('hidden');
-            });
-            
-            $('#close-help-modal, #help-modal').click(function(e) {
-                if (e.target === this) {
-                    $('#help-modal').addClass('hidden');
-                }
-            });
-            
-            // Move navigation handlers
-            $('#move-first').click(function() {
-                if (moveHistory.length > 0) {
-                    currentMoveIndex = 0;
-                    viewHistoryMove(currentMoveIndex);
-                }
-            });
-            
-            $('#move-prev').click(function() {
-                if (currentMoveIndex > 0) {
-                    currentMoveIndex--;
-                    viewHistoryMove(currentMoveIndex);
-                }
-            });
-            
-            $('#move-next').click(function() {
-                if (currentMoveIndex < moveHistory.length - 1) {
-                    currentMoveIndex++;
-                    viewHistoryMove(currentMoveIndex);
-                }
-            });
-            
-            $('#move-last').click(function() {
-                if (moveHistory.length > 0) {
-                    currentMoveIndex = moveHistory.length - 1;
-                    viewHistoryMove(currentMoveIndex);
-                    isViewingHistory = false;
-                    updateNavigationButtons();
-                }
-            });
-            
-            function viewHistoryMove(index) {
-                if (index >= 0 && index < moveHistory.length) {
-                    isViewingHistory = true;
-                    board.position(moveHistory[index].fen);
-                    updateNavigationButtons();
-                    highlightMoveInList(index);
-                }
-            }
-            
-            function updateNavigationButtons() {
-                $('#move-first').prop('disabled', currentMoveIndex <= 0);
-                $('#move-prev').prop('disabled', currentMoveIndex <= 0);
-                $('#move-next').prop('disabled', currentMoveIndex >= moveHistory.length - 1);
-                $('#move-last').prop('disabled', currentMoveIndex >= moveHistory.length - 1 || !isViewingHistory);
-            }
-            
-            function addMoveToHistory(whiteMove, blackMove, fen, turnNum) {
-                moveHistory.push({
-                    white: whiteMove,
-                    black: blackMove,
-                    fen: fen,
-                    turn: turnNum
-                });
-                currentMoveIndex = moveHistory.length - 1;
-                updateMoveList();
-                updateNavigationButtons();
-            }
-            
-            function updateMoveList() {
-                // Filter out move 0 (initial position)
-                const validMoves = moveHistory.filter(move => move.turn > 0);
-                
-                if (validMoves.length === 0) {
-                    $('#move-list').html('<p class="text-blue-300/50 text-center py-4">No moves yet</p>');
-                    return;
-                }
-                
-                const moveListHtml = validMoves.map((move, index) => {
-                    const actualIndex = moveHistory.indexOf(move);
-                    const whiteMove = move.white || '';
-                    const blackMove = move.black || '';
-                    
-                    // Format: "1. e4 d5" or "1. e4" if black hasn't moved yet
-                    let moveText = `<span class="text-blue-300/70">${move.turn}.</span> `;
-                    moveText += `<span class="text-blue-100">${whiteMove}</span>`;
-                    
-                    if (blackMove) {
-                        moveText += ` <span class="text-blue-100">${blackMove}</span>`;
-                    }
-                    
-                    return `<span class="move-item inline-block py-1 px-2 hover:bg-blue-500/20 rounded cursor-pointer mr-2" data-index="${actualIndex}">${moveText}</span>`;
-                }).join('');
-                
-                $('#move-list').html(moveListHtml);
-                
-                // Add click handlers for move items
-                $('.move-item').click(function() {
-                    const index = parseInt($(this).data('index'));
-                    currentMoveIndex = index;
-                    viewHistoryMove(index);
-                });
-            }
-            
-            function highlightMoveInList(index) {
-                $('.move-item').removeClass('bg-blue-500/30');
-                $(`.move-item[data-index="${index}"]`).addClass('bg-blue-500/30');
-            }
-            
-            $('#submit-move').click(function() {
-                if (currentMove) {
-                    socket.emit('submit_move', { 
-                        game_id: gameId, 
-                        color: playerColor, 
-                        move: currentMove 
-                    });
-                    
-                    // Store the pending position so we don't revert immediately
-                    pendingPosition = board.position();
-                    
-                    // Disable controls until next turn
-                    $('#submit-move').addClass('hidden');
-                    $('#reset-move').addClass('hidden');
-                    $('#waiting-message').removeClass('hidden');
-                    allowMoves = false;
-                } else {
-                    alert('Please make a move first');
-                }
-            });
-            
-            $('#reset-move').click(function() {
-                // Reset the current move
-                currentMove = null;
-                $('#current-move').addClass('hidden');
-                
-                // Reset the board position to the server's state
-                board.position(localChessGame.fen());
-                $('#submit-move').addClass('hidden');
-                $('#reset-move').addClass('hidden');
-            });
-            
-            $('#new-game').click(function() {
-                location.reload();
-            });
-            
-            function initializeSocket() {
-                socket = io();
-                
-                socket.on('connect', function() {
-                    socket.emit('join', { game_id: gameId });
-                });
-                
-                socket.on('joined', function(data) {
-                    playerColor = data.color;
-                    updateGameState(data.game_state);
-                    
-                    // Show game ID in header
-                    $('#header-game-id-text').text(gameId);
-                    $('#header-game-id').removeClass('hidden');
-                    
-                    $('#welcome-screen').addClass('hidden');
-                    $('#game-board-container').removeClass('hidden');
-                    $('#player-color').text(playerColor);
-                    
-                    // Initialize board after container is visible
-                    setTimeout(function() {
-                        initializeBoard(data.game_state.fen || 'start');
-                        // Add initial position to history
-                        addMoveToHistory(null, null, data.game_state.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 0);
-                    }, 100);
-                    
-                    allowMoves = true;
-                });
-                
-                socket.on('player_joined', function(data) {
-                    updateGameState(data.game_state);
-                    $('#game-status').html(`<h2>Game Started</h2><p>Opponent joined as ${data.color}</p>`);
-                    allowMoves = true;
-                });
-                
-                socket.on('move_submitted', function(data) {
-                    updateGameState(data.game_state);
-                    
-                    if (data.color !== playerColor) {
-                        $('#waiting-message').html('<p class="text-sm text-cyan-100">Opponent has submitted their move. Waiting for you...</p>');
-                        $('#waiting-message').removeClass('hidden');
-                        allowMoves = true;
-                    }
-                });
-                
-                socket.on('moves_processed', function(data) {
-                    const result = data.result;
-                    const state = data.game_state;
-                    
-                    // Only update the game state if both players made valid moves
-                    // or we're starting a completely new turn
-                    if (result.turn_complete || pendingPosition === null) {
-                        updateGameState(data.game_state);
-                        
-                        // Update the local chess game with the new FEN
-                        localChessGame = new Chess(data.game_state.fen);
-                        
-                        // Update board with new position
-                        if (board) {
-                            board.position(data.game_state.fen);
-                        }
-                        
-                        // Add legal move to history (only if turn is complete)
-                        if (result.turn_complete && result.moves_san) {
-                            // Get the SAN notation from the server response
-                            const whiteMoveSAN = result.moves_san.white;
-                            const blackMoveSAN = result.moves_san.black;
-                            
-                            // The turn_number has already been incremented on the server, 
-                            // so we need to subtract 1 to get the actual move number
-                            const moveNumber = data.game_state.turn_number - 1;
-                            
-                            addMoveToHistory(whiteMoveSAN, blackMoveSAN, data.game_state.fen, moveNumber);
-                            isViewingHistory = false;
-                        }
-                    } else {
-                        // Illegality (mutual or one-sided): both clients revert to last legal state
-                        board.position(localChessGame.fen());
-                        pendingPosition = null;
-                        currentMove = null;
-                        
-                        // Update UI state from server
-                        updateGameState(data.game_state);
-                    }
-                    
-                    // Reset current move
-                    currentMove = null;
-                    pendingPosition = null;
-                    $('#current-move').addClass('hidden');
-                    
-                    // Check if this was an illegal move attempt
-                    const turnNumberDisplay = data.game_state.turn_number;
-                    $('#turn-number').text(turnNumberDisplay);
-                    
-                    // Update attempt number if there are illegal moves
-                    attemptNumber = data.game_state.illegal_attempt || 0;
-                    if (attemptNumber > 0) {
-                        $('#attempt-number').text('.' + attemptNumber);
-                    } else {
-                        $('#attempt-number').text('');
-                    }
-                    
-                    // Show move results
-                    let statusHtml = `<h2>Turn ${turnNumberDisplay}${attemptNumber > 0 ? '.' + attemptNumber : ''}</h2>`;
-                    
-                    if (result.valid_moves && result.valid_moves[playerColor] === false) {
-                        const reason = result.illegal_reason[playerColor];
-                        $('#illegal-move-reason').text(`Your move was illegal: ${reason}`);
-                        $('#illegal-move-reason').removeClass('hidden');
-                        
-                        // Enable move controls for the player to try again
-                        allowMoves = true;
-                        $('#waiting-message').addClass('hidden');
-                    } else {
-                        $('#illegal-move-reason').addClass('hidden');
-                    }
 
-                    // Penalty feedback
-                    if (result.penalty_applied) {
-                        const penalized = result.penalty_applied.color;
-                        const secs = result.penalty_applied.seconds;
-                        statusHtml += `<p>Penalty: -${secs}s applied to ${penalized} for repeated one-sided illegality.</p>`;
-                    }
-                    
-                    // Check for game end
-                    if (data.game_state.game_over) {
-                        if (data.game_state.winner) {
-                            const winMessage = data.game_state.winner === playerColor ? 
-                                'You won!' : 'You lost!';
-                            statusHtml += `<p><strong>${winMessage}</strong> Game ended by checkmate.</p>`;
-                            $('#result-message').text(`${data.game_state.winner} wins by checkmate!`);
-                        } else if (data.game_state.draw_reason) {
-                            statusHtml += `<p><strong>Game drawn</strong> by ${data.game_state.draw_reason}.</p>`;
-                            $('#result-message').text(`Draw by ${data.game_state.draw_reason}`);
-                        }
-                        
-                        $('#game-result').removeClass('hidden');
-                        $('#waiting-message').addClass('hidden');
-                    } else {
-                        // Reset for next turn
-                        allowMoves = true;
-                        $('#waiting-message').addClass('hidden');
-                    }
-                    
-                    $('#game-status').html(statusHtml);
-                    
-                    // Update new illegality counters and clocks
-                    $('#mutual-illegal').text(state.mutual_illegal_count || 0);
-                    if (state.one_sided_illegal_counts) {
-                        $('#white-one-illegal').text(state.one_sided_illegal_counts.white || 0);
-                        $('#black-one-illegal').text(state.one_sided_illegal_counts.black || 0);
-                    }
-                    const threshold = state.one_sided_threshold || 3;
-                    $('#one-threshold').text(threshold);
-                    $('#one-threshold-2').text(threshold);
-                    if (state.clock_seconds) {
-                        $('#white-clock').text(formatSeconds(state.clock_seconds.white));
-                        $('#black-clock').text(formatSeconds(state.clock_seconds.black));
-                    }
-                    if ((state.mutual_illegal_count || 0) > 0 ||
-                        (state.one_sided_illegal_counts && (state.one_sided_illegal_counts.white > 0 || state.one_sided_illegal_counts.black > 0))) {
-                        $('#illegal-moves-info').removeClass('hidden');
-                    }
-                });
-                
-                socket.on('error', function(data) {
-                    alert('Error: ' + data.message);
-                });
-            }
-            
-            function initializeBoard(initialPosition) {
-                // Initialize the chess game object
-                localChessGame = new Chess(initialPosition);
-                
-                function onDragStart(source, piece) {
-                    // Allow dragging only when moves are allowed
-                    if (!allowMoves) return false;
-                    
-                    // Only allow players to move their own pieces
-                    if ((playerColor === 'white' && piece.search(/^b/) !== -1) || 
-                        (playerColor === 'black' && piece.search(/^w/) !== -1)) {
-                        return false;
-                    }
-                    
-                    return true; // Allow the drag
-                }
-                
-                function onDrop(source, target) {
-                    // Accept the intention without strict legality checks (simultaneous rules)
-                    // Build UCI string
-                    currentMove = source + target;
-                    
-                    // Add promotion only if the moving piece is a pawn reaching last rank
-                    const pieceAtSource = localChessGame.get(source);
-                    if (pieceAtSource && pieceAtSource.type === 'p') {
-                        const rank = target.charAt(1);
-                        const isWhite = pieceAtSource.color === 'w';
-                        const isPromotionRank = (isWhite && rank === '8') || (!isWhite && rank === '1');
-                        if (isPromotionRank) {
-                            currentMove += 'q';
-                        }
-                    }
-                    
-                    // Show the move in the UI
-                    $('#current-move-text').text(`${source} to ${target}`);
-                    $('#current-move').removeClass('hidden');
-                    
-                    // Show submission controls
-                    $('#submit-move').removeClass('hidden');
-                    $('#reset-move').removeClass('hidden');
-                    
-                    // Don't snap back - leave the piece where it was dropped
-                    return true;
-                }
-                
-                // Configuration for the chessboard
-                const config = {
-                    position: initialPosition,
-                    orientation: playerColor === 'white' ? 'white' : 'black',
-                    showNotation: true,
-                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
-                    draggable: true,
-                    onDragStart: onDragStart,
-                    onDrop: onDrop
-                };
-                
-                // Initialize the board
-                board = Chessboard('game-board', config);
-                
-                // Make the board responsive
-                $(window).resize(function() {
-                    board.resize();
-                });
-            }
-            
-            function updateGameState(gameState, preservePosition = false) {
-                $('#turn-number').text(gameState.turn_number);
-                
-                // Update attempt number if there are illegal moves
-                attemptNumber = gameState.illegal_attempt || 0;
-                if (attemptNumber > 0) {
-                    $('#attempt-number').text('.' + attemptNumber);
-                } else {
-                    $('#attempt-number').text('');
-                }
-                
-                // Update the board position only if we receive a new FEN state
-                // and we're not preserving the current position for visual feedback
-                if (gameState.fen && board && !preservePosition && !pendingPosition) {
-                    // Update the local chess game with the server's FEN
-                    localChessGame = new Chess(gameState.fen);
-                    // Update the board to the server's state
-                    board.position(gameState.fen);
-                    // Clear the current move since we've updated to the server state
-                    currentMove = null;
-                    $('#current-move').addClass('hidden');
-                }
-                
-                // Handle UI state based on move submission status
-                if (gameState.white_ready && gameState.black_ready) {
-                    // Both players have moved, hide waiting message
-                    $('#waiting-message').addClass('hidden');
-                } else if ((playerColor === 'white' && gameState.white_ready) || 
-                        (playerColor === 'black' && gameState.black_ready)) {
-                    // This player has submitted their move, waiting for opponent
-                    $('#waiting-message').html('<p class="text-sm text-cyan-100">Waiting for opponent to submit move...</p>');
-                    $('#waiting-message').removeClass('hidden');
-                    $('#submit-move').addClass('hidden');
-                    $('#reset-move').addClass('hidden');
-                } else {
-                    // This player needs to submit a move
-                    $('#waiting-message').addClass('hidden');
-                    
-                    // Only show submit/reset buttons if the player has made a move
-                    if (currentMove) {
-                        $('#submit-move').removeClass('hidden');
-                        $('#reset-move').removeClass('hidden');
-                    } else {
-                        $('#submit-move').addClass('hidden');
-                        $('#reset-move').addClass('hidden');
-                    }
-                }
-            }
-
-            function formatSeconds(totalSeconds) {
-                const s = Math.max(0, parseInt(totalSeconds || 0, 10));
-                const m = Math.floor(s / 60);
-                const sec = s % 60;
-                return `${m}:${sec.toString().padStart(2, '0')}`;
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
+
 </html>

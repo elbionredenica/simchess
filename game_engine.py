@@ -1,33 +1,13 @@
-from flask import Flask, request, jsonify, render_template
-from flask_socketio import SocketIO, emit, join_room
-from flask_cors import CORS
 import chess
-import uuid
 import logging
-import os
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-app = Flask(__name__, static_folder='static')
-app.config['SECRET_KEY'] = 'simchess-secret!'
-CORS(app)
 
 class SimChessBoard(chess.Board):
     """Custom Board class for SimChess that allows pseudo-legal moves (gambling)."""
     def is_legal(self, move):
         # Allow any pseudo-legal move (including moving pinned pieces or into check)
         return self.is_pseudo_legal(move)
-# Use eventlet in production, threading for local dev
-try:
-    import eventlet
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
-except ImportError:
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
-
-# Store games in memory (for MVP)
-games = {}
 
 class SimChessGame:
     def __init__(self, game_id):
@@ -621,100 +601,3 @@ class SimChessGame:
             "penalty_seconds": self.one_sided_penalty_seconds,
             "clock_seconds": self.clock_seconds
         }
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/create_game', methods=['POST'])
-def create_game():
-    game_id = str(uuid.uuid4())
-    games[game_id] = SimChessGame(game_id)
-    return jsonify({"game_id": game_id})
-
-@app.route('/api/resign_game', methods=['POST'])
-def resign_game():
-    data = request.json
-    game_id = data.get('game_id')
-    player_color = data.get('player_color')
-    
-    if not game_id or not player_color:
-        return jsonify({"success": False, "message": "Missing game_id or player_color"}), 400
-        
-    game = games.get(game_id)
-    if not game:
-        return jsonify({"success": False, "message": "Game not found"}), 404
-        
-    if game.game_over:
-        return jsonify({"success": False, "message": "Game is already over"}), 400
-        
-    # Process resignation
-    opponent = "black" if player_color == "white" else "white"
-    game.game_over = True
-    game.winner = opponent
-    game.win_reason = "resignation"
-    
-    logger.info(f"Game {game_id} ended by resignation. Winner: {opponent}")
-    
-    # Broadcast update
-    socketio.emit('game_state_update', {'game_state': game.get_state()}, room=game_id)
-    
-    return jsonify({"success": True, "message": "Resignation accepted"})
-
-@socketio.on('join')
-def on_join(data):
-    game_id = data['game_id']
-    if game_id not in games:
-        emit('error', {'message': 'Game not found'})
-        return
-    
-    player_id = request.sid
-    color = games[game_id].assign_player(player_id)
-    
-    if color:
-        join_room(game_id)
-        emit('joined', {
-            'color': color,
-            'game_state': games[game_id].get_state()
-        })
-        # Notify other player
-        emit('player_joined', {
-            'color': color,
-            'game_state': games[game_id].get_state()
-        }, room=game_id, include_self=False)
-    else:
-        emit('error', {'message': 'Game is full'})
-
-@socketio.on('submit_move')
-def on_submit_move(data):
-    game_id = data['game_id']
-    color = data['color']
-    move = data['move']
-    
-    logger.debug(f"Received move: {color}={move} for game {game_id}")
-    
-    if game_id not in games:
-        emit('error', {'message': 'Game not found'})
-        return
-    
-    game = games[game_id]
-    result = game.submit_move(color, move)
-    
-    # Update both players about the move submission
-    emit('move_submitted', {
-        'color': color,
-        'game_state': game.get_state()
-    }, room=game_id)
-    
-    # If both players have submitted, process the moves
-    if result:
-        emit('moves_processed', {
-            'result': result,
-            'game_state': game.get_state()
-        }, room=game_id)
-
-if __name__ == '__main__':
-    # Get port from environment variable (Render sets PORT)
-    port = int(os.environ.get('PORT', 10000))
-    # Use eventlet for production WebSocket support
-    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
