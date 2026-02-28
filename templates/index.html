@@ -1,473 +1,305 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimChess - Simultaneous Chess</title>
-
-    <!-- Tailwind CSS -->
+    <title>SimChess &mdash; Simultaneous Chess</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            300: '#93c5fd',
-                            400: '#60a5fa',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                            900: '#1e3a8a',
-                        }
-                    }
-                }
-            }
+            theme: { extend: { fontFamily: { sans: ['Rubik', 'sans-serif'] } } }
         }
     </script>
-
-    <!-- Chess libraries -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+<body class="h-screen overflow-hidden flex flex-col text-white">
 
-<body
-    class="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 h-screen text-white overflow-hidden flex flex-col">
-    <!-- Header -->
-    <header class="py-6 px-4 border-b border-blue-500/20 bg-slate-950/50 backdrop-blur-sm">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <img src="/static/img/logo-icon.svg" alt="SimChess" class="w-8 h-12">
-            </div>
-            <div class="flex items-center gap-4">
-                <div id="header-game-id" class="hidden">
-                    <div class="flex items-center gap-2 bg-blue-950/30 border border-blue-500/20 rounded-lg px-3 py-2">
-                        <span class="text-xs text-blue-300/60">Game ID:</span>
-                        <span id="header-game-id-text" class="text-sm font-mono text-blue-100"></span>
-                        <button id="copy-game-id-header" class="text-blue-400 hover:text-blue-300 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <button id="help-button"
-                    class="w-10 h-10 rounded-lg bg-cyan-600/20 hover:bg-cyan-500/30 border border-cyan-400/30 flex items-center justify-center transition-all"
-                    title="How to Play">
-                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                        </path>
-                    </svg>
+<!-- HEADER -->
+<header class="flex-none flex items-center justify-between px-6 py-3 border-b border-white/[0.06]" style="background:rgba(8,8,15,0.7);backdrop-filter:blur(12px)">
+    <div class="flex items-center gap-2">
+        <img src="{{ url_for('static', filename='img/logo-icon.svg') }}" class="h-6 w-auto" alt="SimChess">
+        <span class="font-black tracking-tight text-sm text-white/90">SimChess</span>
+    </div>
+    <div id="header-game-id" class="hidden items-center gap-2 bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-1.5">
+        <span class="text-xs text-white/40">Game</span>
+        <span id="header-game-id-text" class="text-xs font-mono text-white/70 max-w-[120px] truncate"></span>
+        <button id="copy-game-id-header" title="Copy invite link" class="text-white/40 hover:text-indigo-400 transition-colors ml-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </button>
+    </div>
+    <button id="help-button" title="How to Play" class="flex items-center gap-1.5 text-xs text-white/50 hover:text-indigo-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.05]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        How to Play
+    </button>
+</header>
+
+<!-- ABORT TOASTS -->
+<div id="abort-warning-toast" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+    <div class="flex items-center gap-3 bg-amber-500/90 text-black text-sm font-semibold px-5 py-2.5 rounded-xl shadow-xl">
+        <svg class="w-4 h-4 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Make your first move! <span id="abort-countdown" class="font-mono font-black">30s</span>
+    </div>
+</div>
+<div id="abort-urgent-toast" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+    <div class="animate-bounce flex items-center gap-3 bg-red-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-xl">
+        <svg class="w-4 h-4 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Aborting in <span id="abort-urgent-countdown" class="font-mono font-black text-lg">10</span>s
+    </div>
+</div>
+
+<!-- MAIN -->
+<main class="flex-1 overflow-hidden relative">
+
+<!-- WELCOME SCREEN -->
+<div id="welcome-screen" class="absolute inset-0 flex items-center justify-center p-6">
+    <span class="chess-deco" style="top:8%;left:5%;transform:rotate(-15deg)">&#9820;</span>
+    <span class="chess-deco" style="bottom:10%;right:6%;transform:rotate(12deg)">&#9822;</span>
+    <span class="chess-deco" style="top:18%;right:9%;transform:rotate(8deg);font-size:6rem">&#9821;</span>
+    <span class="chess-deco" style="bottom:18%;left:8%;transform:rotate(-8deg);font-size:7rem">&#9823;</span>
+
+    <div class="relative z-10 w-full max-w-sm">
+        <div class="text-center mb-8">
+            <img src="{{ url_for('static', filename='img/logo-icon.svg') }}" class="h-14 w-auto mx-auto mb-4" alt="SimChess">
+            <h1 class="text-3xl font-black tracking-tight">SimChess</h1>
+            <p class="text-sm text-white/40 mt-1.5 font-medium">Both players move at the same time.</p>
+        </div>
+
+        <div class="panel p-5 space-y-4" style="background:rgba(255,255,255,0.04)">
+            <div id="game-status">
+                <button id="create-game" class="btn-gold w-full py-3 text-sm rounded-lg flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    Create New Game
                 </button>
             </div>
-        </div>
-    </header>
 
-    <!-- Abort Warning Toast -->
-    <div id="abort-warning-toast" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
-        <div class="bg-yellow-500/90 text-black px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-pulse">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <span id="abort-warning-text" class="font-bold">Make your first move!</span>
-            <span id="abort-countdown" class="font-mono font-bold text-lg">10s</span>
-        </div>
-    </div>
-
-    <!-- Abort Urgent Toast (last 10 seconds) -->
-    <div id="abort-urgent-toast" class="hidden fixed top-20 left-1/2 transform -translate-x-1/2 z-50">
-        <div class="bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-bounce">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span class="font-bold">Game aborting in</span>
-            <span id="abort-urgent-countdown" class="font-mono font-bold text-2xl">10</span>
-            <span class="font-bold">seconds!</span>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto">
-        <div class="max-w-[1600px] mx-auto px-6 py-8">
-            <!-- Welcome Screen -->
-            <div id="welcome-screen" class="max-w-2xl mx-auto">
-                <div class="glass-effect rounded-2xl p-8 mb-6">
-                    <div id="game-status" class="text-center mb-8">
-                        <h2
-                            class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                            Welcome to SimChess!</h2>
-                        <p class="text-blue-200/80">Create a new game or join an existing one to start playing.</p>
-                    </div>
-
-                    <div class="space-y-4">
-                        <button id="create-game"
-                            class="w-full btn-primary text-white font-semibold py-4 px-6 rounded-xl shadow-lg">
-                            <span class="flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Create New Game
-                            </span>
-                        </button>
-
-                        <div class="relative">
-                            <div class="absolute inset-0 flex items-center">
-                                <div class="w-full border-t border-gray-600"></div>
-                            </div>
-                            <div class="relative flex justify-center text-sm">
-                                <span class="px-4 bg-slate-900/50 text-gray-400">or</span>
-                            </div>
-                        </div>
-
-                        <div class="flex gap-3">
-                            <input type="text" id="game-id-input" placeholder="Enter Game ID"
-                                class="flex-1 bg-blue-950/30 border border-blue-500/30 rounded-xl px-4 py-3 text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <button id="join-game"
-                                class="bg-blue-600/50 hover:bg-blue-500/60 text-white font-semibold px-6 py-3 rounded-xl transition-all border border-blue-400/30">
-                                Join
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="game-id-display" class="hidden glass-effect rounded-2xl p-6 mb-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-blue-300/70 mb-1">Game ID</p>
-                            <p class="text-xl font-mono font-bold text-blue-100" id="current-game-id"></p>
-                        </div>
-                        <button id="copy-game-id"
-                            class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
-                                </path>
-                            </svg>
-                            Copy
-                        </button>
-                    </div>
-                    <p class="text-sm text-blue-300/60 mt-4">Share this ID with your opponent to start playing</p>
-                </div>
-            </div>
-
-            <!-- Game Board -->
-            <div id="game-board-container" class="hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    <!-- Left Sidebar - Game Info & Stats -->
-                    <div class="lg:col-span-3 space-y-3 h-full flex flex-col">
-                        <div class="glass-effect rounded-2xl p-4">
-                            <h3 class="text-base font-bold mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Game Info
-                            </h3>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
-                                    <span class="text-blue-300/70">Playing as</span>
-                                    <span id="player-color" class="font-bold capitalize text-blue-100">-</span>
-                                </div>
-                                <div class="flex justify-between items-center py-2 border-b border-blue-500/20">
-                                    <span class="text-blue-300/70">Turn</span>
-                                    <span class="font-bold text-blue-100"><span id="turn-number">1</span><span
-                                            id="attempt-number"></span></span>
-                                </div>
-                                <div id="current-move"
-                                    class="hidden bg-blue-500/20 border border-blue-400/40 rounded-lg p-2">
-                                    <p class="text-xs text-blue-200/70">Your move</p>
-                                    <p id="current-move-text" class="font-mono font-bold text-blue-50">-</p>
-                                </div>
-                                <div id="waiting-message"
-                                    class="hidden bg-cyan-500/20 border border-cyan-400/40 rounded-lg p-2 pulse-animation">
-                                    <p class="text-xs text-cyan-100">Waiting for opponent...</p>
-                                </div>
-                            </div>
-
-                            <div id="move-controls" class="mt-3 space-y-2">
-                                <button id="submit-move"
-                                    class="hidden w-full btn-primary text-white font-semibold py-2 px-3 rounded-lg text-sm">
-                                    Submit Move
-                                </button>
-                                <button id="reset-move"
-                                    class="hidden w-full bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 font-semibold py-2 px-3 rounded-lg transition-all text-sm">
-                                    Reset Move
-                                </button>
-                                <div class="pt-2">
-                                    <button id="resign-game"
-                                        class="w-full bg-red-900/30 hover:bg-red-800/40 border border-red-500/30 text-red-200 font-semibold py-2 px-3 rounded-lg transition-all text-sm flex items-center justify-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                        Resign Game
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div id="game-result"
-                                class="hidden mt-3 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-400/40 rounded-xl p-3">
-                                <h3 class="text-lg font-bold mb-2 text-emerald-100">Game Over</h3>
-                                <p id="result-message" class="text-blue-200 mb-3 text-sm"></p>
-                                <button id="new-game"
-                                    class="w-full bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-semibold py-2 px-3 rounded-lg transition-all shadow-lg shadow-emerald-500/30 text-sm">
-                                    Start New Game
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="illegal-moves-info" class="glass-effect rounded-2xl p-4">
-                            <h3 class="text-base font-bold mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-                                    </path>
-                                </svg>
-                                Statistics
-                            </h3>
-                            <div class="space-y-2 text-xs">
-                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                    <span class="text-blue-300/70">Mutual illegalities</span>
-                                    <span id="mutual-illegal" class="font-bold text-blue-100">0</span>
-                                </div>
-                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                    <span class="text-blue-300/70">White one-sided</span>
-                                    <span class="font-bold text-blue-100"><span id="white-one-illegal">0</span>/<span
-                                            id="one-threshold">3</span></span>
-                                </div>
-                                <div class="flex justify-between py-1.5 border-b border-blue-500/20">
-                                    <span class="text-blue-300/70">Black one-sided</span>
-                                    <span class="font-bold text-blue-100"><span id="black-one-illegal">0</span>/<span
-                                            id="one-threshold-2">3</span></span>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Center - Chess Board -->
-                    <div class="lg:col-span-6 flex flex-col items-center justify-start space-y-4">
-                        <!-- Chess Clocks -->
-                        <div class="w-full max-w-[650px] grid grid-cols-2 gap-4">
-                            <!-- White Clock -->
-                            <div id="white-clock-container" class="glass-effect rounded-xl p-4 border-2 border-gray-300/30 bg-gradient-to-br from-gray-100/10 to-white/5">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-3 h-3 rounded-full bg-white shadow-lg"></div>
-                                        <span class="text-sm font-semibold text-gray-200">White</span>
-                                    </div>
-                                    <div id="white-clock-status" class="hidden">
-                                        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                                    </div>
-                                </div>
-                                <div id="white-clock" class="text-3xl font-bold font-mono text-white mt-2 tracking-wider">10:00</div>
-                            </div>
-                            <!-- Black Clock -->
-                            <div id="black-clock-container" class="glass-effect rounded-xl p-4 border-2 border-gray-800/50 bg-gradient-to-br from-gray-900/80 to-black/60">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-3 h-3 rounded-full bg-gray-900 border border-gray-600 shadow-lg"></div>
-                                        <span class="text-sm font-semibold text-gray-300">Black</span>
-                                    </div>
-                                    <div id="black-clock-status" class="hidden">
-                                        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                                    </div>
-                                </div>
-                                <div id="black-clock" class="text-3xl font-bold font-mono text-white mt-2 tracking-wider">10:00</div>
-                            </div>
-                        </div>
-                        <div
-                            class="chess-board-container w-full h-full flex items-center justify-center bg-transparent">
-                            <div id="game-board" style="width: 100%; max-width: 650px;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Right Sidebar - History -->
-                    <div class="lg:col-span-3 h-full flex flex-col">
-                        <div class="glass-effect rounded-2xl p-3 flex-1 flex flex-col min-h-[300px]">
-                            <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-base font-bold flex items-center gap-2">
-                                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    History
-                                </h3>
-                            </div>
-                            <div id="move-list"
-                                class="bg-blue-950/30 rounded-lg p-2 mb-2 flex-1 overflow-y-auto text-xs font-mono">
-                                <p class="text-blue-300/50 text-center py-4">No moves yet</p>
-                            </div>
-                            <div class="flex gap-1">
-                                <button id="move-first"
-                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-                                    </svg>
-                                </button>
-                                <button id="move-prev"
-                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 19l-7-7 7-7"></path>
-                                    </svg>
-                                </button>
-                                <button id="move-next"
-                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 5l7 7-7 7"></path>
-                                    </svg>
-                                </button>
-                                <button id="move-last"
-                                    class="flex-1 bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 py-1 px-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- How to Play Modal -->
-        <div id="help-modal"
-            class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="glass-effect rounded-2xl p-6 max-w-md w-full">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold flex items-center gap-2">
-                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                            </path>
-                        </svg>
-                        How to Play
-                    </h3>
-                    <button id="close-help-modal" class="text-blue-300/70 hover:text-blue-100 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+            <div id="game-id-display" class="hidden space-y-2">
+                <p class="text-xs text-white/40 font-medium">Share this link with your opponent</p>
+                <div class="flex items-center gap-2">
+                    <div class="invite-link-box" id="invite-link-text">&mdash;</div>
+                    <button id="copy-game-id" class="flex-none flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 transition-colors text-white px-3 py-2 rounded-lg">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        Copy
                     </button>
                 </div>
-                <div class="space-y-3 text-sm text-blue-200/80">
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            1</div>
-                        <p>Drag a piece to make your move</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            2</div>
-                        <p>Click "Submit Move" when ready</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            3</div>
-                        <p>Both players submit moves simultaneously</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            4</div>
-                        <p>Mutual conflicts (same target square) reset the ply</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            5</div>
-                        <p>After 3 one-sided illegal moves, -30s penalty applies</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <div
-                            class="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-bold shadow-lg shadow-blue-500/30">
-                            6</div>
-                        <p>Standard chess rules apply otherwise</p>
-                    </div>
-                </div>
+                <p class="text-xs text-white/30 text-center pulse-animation">Waiting for opponent to join&hellip;</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex-1 h-px bg-white/[0.07]"></div>
+                <span class="text-xs text-white/30">or join</span>
+                <div class="flex-1 h-px bg-white/[0.07]"></div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="game-id-input" placeholder="Paste invite link or game ID"
+                    class="flex-1 bg-white/[0.05] border border-white/[0.09] rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-indigo-500/[0.05] transition-all">
+                <button id="join-game" class="btn-primary flex-none text-sm px-4 py-2.5 rounded-lg">Join &rarr;</button>
             </div>
         </div>
 
-        <!-- Game Over Modal (Dramatic) -->
-        <div id="game-over-modal"
-            class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div class="relative">
-                <!-- Animated glow effect -->
-                <div
-                    class="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-cyan-500/30 to-blue-500/30 rounded-3xl blur-xl animate-pulse">
-                </div>
+        <div class="text-center mt-5">
+            <button id="help-button-welcome" class="text-xs text-white/35 hover:text-indigo-400 transition-colors inline-flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                New to SimChess? Learn how it works
+            </button>
+        </div>
+    </div>
+</div>
 
-                <div
-                    class="relative glass-effect rounded-3xl p-8 max-w-lg w-full text-center border-2 border-blue-400/40 shadow-2xl shadow-blue-500/20">
-                    <!-- Crown/Trophy icon for winner -->
-                    <div id="game-over-icon" class="mb-6">
-                        <div
-                            class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-500/50">
-                            <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3H5v2h14v-2z" />
-                            </svg>
+<!-- GAME BOARD CONTAINER -->
+<div id="game-board-container" class="hidden h-full p-3 overflow-hidden" style="opacity:0">
+    <div class="grid grid-cols-12 gap-3 h-full max-w-[1600px] mx-auto">
+
+        <!-- Left sidebar -->
+        <div class="col-span-3 flex flex-col gap-3 overflow-y-auto">
+            <div class="glass-effect p-4">
+                <p class="text-[10px] uppercase tracking-widest text-white/30 font-semibold mb-3">Game Info</p>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/45">Playing as</span>
+                        <span id="player-color" class="font-bold capitalize text-indigo-300">&mdash;</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/45">Turn</span>
+                        <span class="font-bold"><span id="turn-number">1</span><span id="attempt-number" class="text-amber-400"></span></span>
+                    </div>
+                </div>
+                <div id="current-move" class="hidden mt-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2.5">
+                    <p class="text-[10px] text-indigo-300/60 uppercase tracking-wide mb-1">Your move</p>
+                    <p id="current-move-text" class="font-mono font-bold text-indigo-100 text-sm">&mdash;</p>
+                </div>
+                <div id="waiting-message" class="hidden mt-3 bg-white/[0.04] border border-white/[0.07] rounded-lg p-2.5 pulse-animation">
+                    <p class="text-xs text-white/50">Waiting for opponent&hellip;</p>
+                </div>
+                <div id="move-controls" class="mt-3 space-y-2">
+                    <button id="submit-move" class="hidden w-full btn-primary text-sm font-semibold py-2 px-3 rounded-lg">Submit Move</button>
+                    <button id="reset-move" class="hidden w-full text-sm font-medium py-2 px-3 rounded-lg transition-all border border-white/[0.09] bg-white/[0.04] hover:bg-white/[0.07] text-white/70">Reset Move</button>
+                    <button id="resign-game" class="w-full text-xs font-medium py-2 px-3 rounded-lg border border-red-500/20 bg-red-900/20 hover:bg-red-900/35 text-red-300/70 hover:text-red-200 transition-all flex items-center justify-center gap-1.5 mt-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        Resign
+                    </button>
+                </div>
+                <div id="game-result" class="hidden mt-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                    <p class="text-xs text-emerald-300/70 mb-1">Game Over</p>
+                    <p id="result-message" class="text-sm font-semibold text-emerald-100 mb-3"></p>
+                    <button id="new-game" class="w-full bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold py-2 rounded-lg transition-all">New Game</button>
+                </div>
+            </div>
+
+            <div class="glass-effect p-4">
+                <p class="text-[10px] uppercase tracking-widest text-white/30 font-semibold mb-3">Illegality Stats</p>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between py-1 border-b border-white/[0.05]">
+                        <span class="text-white/40">Mutual</span>
+                        <span id="mutual-illegal" class="font-semibold text-white/70">0</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-white/[0.05]">
+                        <span class="text-white/40">White one-sided</span>
+                        <span class="font-semibold text-white/70"><span id="white-one-illegal">0</span>/<span id="one-threshold">3</span></span>
+                    </div>
+                    <div class="flex justify-between py-1">
+                        <span class="text-white/40">Black one-sided</span>
+                        <span class="font-semibold text-white/70"><span id="black-one-illegal">0</span>/<span id="one-threshold-2">3</span></span>
+                    </div>
+                </div>
+                <p class="text-[10px] text-white/25 mt-3 leading-snug">3 one-sided illegals &rarr; &minus;30s penalty</p>
+            </div>
+        </div>
+
+        <!-- Center -->
+        <div class="col-span-6 flex flex-col items-center gap-3">
+            <div class="w-full grid grid-cols-2 gap-3 max-w-[640px]">
+                <div id="white-clock-container" class="panel px-4 py-3 border border-white/[0.08] rounded-xl" style="background:rgba(255,255,255,0.03)">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-white/80"></div>
+                            <span class="text-xs font-semibold text-white/60">White</span>
                         </div>
+                        <div id="white-clock-status" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                     </div>
-
-                    <!-- Main title -->
-                    <h2 id="game-over-title"
-                        class="text-4xl font-extrabold mb-3 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
-                        Victory!
-                    </h2>
-
-                    <!-- Subtitle / reason -->
-                    <p id="game-over-subtitle" class="text-xl text-blue-200/90 mb-6">
-                        White wins by checkmate
-                    </p>
-
-                    <!-- Additional info -->
-                    <div id="game-over-stats" class="bg-blue-950/50 rounded-xl p-4 mb-6 text-sm text-blue-200/70">
-                        <p>Game completed in <span id="game-over-turns">0</span> moves</p>
+                    <div id="white-clock" class="text-2xl font-black text-white tracking-wider">10:00</div>
+                </div>
+                <div id="black-clock-container" class="panel px-4 py-3 border border-white/[0.08] rounded-xl" style="background:rgba(255,255,255,0.03)">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-white/20 border border-white/40"></div>
+                            <span class="text-xs font-semibold text-white/60">Black</span>
+                        </div>
+                        <div id="black-clock-status" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                     </div>
+                    <div id="black-clock" class="text-2xl font-black text-white tracking-wider">10:00</div>
+                </div>
+            </div>
+            <div class="chess-board-container w-full flex items-center justify-center">
+                <div id="game-board" style="width:100%;max-width:640px"></div>
+            </div>
+        </div>
 
-                    <!-- Actions -->
-                    <div class="flex gap-3 justify-center">
-                        <button id="game-over-new-game"
-                            class="btn-primary text-white font-semibold py-3 px-8 rounded-xl">
-                            New Game
-                        </button>
-                        <button id="game-over-close"
-                            class="bg-blue-600/30 hover:bg-blue-500/40 border border-blue-400/30 text-blue-100 font-semibold py-3 px-6 rounded-xl transition-all">
-                            Review Board
-                        </button>
-                    </div>
+        <!-- Right sidebar -->
+        <div class="col-span-3 flex flex-col">
+            <div class="glass-effect p-3 flex flex-col flex-1 min-h-0">
+                <p class="text-[10px] uppercase tracking-widest text-white/30 font-semibold mb-2">Move History</p>
+                <div id="move-list" class="flex-1 overflow-y-auto rounded-lg p-2 text-xs font-mono mb-2" style="background:rgba(255,255,255,0.02)">
+                    <p class="text-white/25 text-center py-4">No moves yet</p>
+                </div>
+                <div class="grid grid-cols-4 gap-1">
+                    <button id="move-first" class="py-1.5 rounded-lg border border-white/[0.07] text-white/50 hover:text-white/80 transition-all" style="background:rgba(255,255,255,0.04)"><svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
+                    <button id="move-prev"  class="py-1.5 rounded-lg border border-white/[0.07] text-white/50 hover:text-white/80 transition-all" style="background:rgba(255,255,255,0.04)"><svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                    <button id="move-next"  class="py-1.5 rounded-lg border border-white/[0.07] text-white/50 hover:text-white/80 transition-all" style="background:rgba(255,255,255,0.04)"><svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                    <button id="move-last"  class="py-1.5 rounded-lg border border-white/[0.07] text-white/50 hover:text-white/80 transition-all" style="background:rgba(255,255,255,0.04)"><svg class="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
                 </div>
             </div>
         </div>
+
+    </div>
+</div>
+
+</main>
+
+<!-- WALKTHROUGH MODAL -->
+<div id="help-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(8px)">
+    <div class="relative w-full max-w-md glass-effect rounded-2xl overflow-hidden border border-white/[0.10]">
+        <div id="walkthrough-steps">
+            <div class="walkthrough-step p-8 text-center" data-step="1">
+                <div class="text-6xl mb-4 leading-none">&#9889;</div>
+                <h3 class="text-xl font-black mb-3">Both Move at Once</h3>
+                <p class="text-sm text-white/60 leading-relaxed">Unlike traditional chess, both players select and submit their move <em>simultaneously</em> &mdash; no waiting around. You pick your move without knowing what your opponent is doing.</p>
+            </div>
+            <div class="walkthrough-step hidden p-8 text-center" data-step="2">
+                <div class="text-6xl mb-4 leading-none">&#9876;&#65039;</div>
+                <h3 class="text-xl font-black mb-3">Conflicts &amp; Collisions</h3>
+                <p class="text-sm text-white/60 leading-relaxed">If both players aim for the <strong class="text-white/80">same square</strong>, or a sliding piece's path is blocked by the opponent's move, it's a <span class="text-amber-400 font-semibold">mutual conflict</span>. Both moves are cancelled and you try again.</p>
+            </div>
+            <div class="walkthrough-step hidden p-8 text-center" data-step="3">
+                <div class="text-6xl mb-4 leading-none">&#9888;&#65039;</div>
+                <h3 class="text-xl font-black mb-3">Illegal Move Penalties</h3>
+                <p class="text-sm text-white/60 leading-relaxed">If <em>only you</em> make an illegal move, it's a <span class="text-red-400 font-semibold">one-sided illegality</span>. After <strong class="text-white/80">3 of these</strong>, you lose <strong class="text-white/80">30 seconds</strong> off your clock. Three mutual conflicts in one turn is a draw.</p>
+            </div>
+            <div class="walkthrough-step hidden p-8 text-center" data-step="4">
+                <div class="text-6xl mb-4 leading-none">&#9819;</div>
+                <h3 class="text-xl font-black mb-3">Capture the King</h3>
+                <p class="text-sm text-white/60 leading-relaxed">You win by literally <strong class="text-white/80">capturing your opponent's king</strong>. There are no check announcements &mdash; you can move into check if you dare. The gamble is yours to take.</p>
+            </div>
+            <div class="walkthrough-step hidden p-8 text-center" data-step="5">
+                <div class="text-6xl mb-4 leading-none">&#129309;</div>
+                <h3 class="text-xl font-black mb-3">Draw Conditions</h3>
+                <p class="text-sm text-white/60 leading-relaxed">The game draws if both kings are captured simultaneously, insufficient material remains, by <strong class="text-white/80">threefold repetition</strong>, or after <strong class="text-white/80">3 mutual conflicts</strong> in a single turn.</p>
+            </div>
         </div>
-    </main>
+        <div class="px-8 pb-7 flex items-center justify-between">
+            <button id="wt-prev" class="text-xs text-white/40 hover:text-white/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.06]">&larr; Prev</button>
+            <div id="wt-dots" class="flex items-center gap-2">
+                <div class="step-dot active" data-dot="1"></div>
+                <div class="step-dot" data-dot="2"></div>
+                <div class="step-dot" data-dot="3"></div>
+                <div class="step-dot" data-dot="4"></div>
+                <div class="step-dot" data-dot="5"></div>
+            </div>
+            <button id="wt-next" class="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors px-4 py-1.5 rounded-lg">Next &rarr;</button>
+        </div>
+        <button id="close-help-modal" class="absolute top-4 right-4 text-white/30 hover:text-white/70 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+</div>
 
-    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
-</body>
+<!-- GAME OVER MODAL -->
+<div id="game-over-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.80);backdrop-filter:blur(10px)">
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="w-96 h-96 rounded-full opacity-30 animate-pulse" style="background:radial-gradient(circle, rgba(99,102,241,0.4) 0%, transparent 70%)"></div>
+    </div>
+    <div class="relative glass-effect rounded-2xl p-8 max-w-sm w-full text-center border border-white/[0.12] shadow-2xl z-10">
+        <div id="game-over-icon" class="mb-5">
+            <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-500/40 text-4xl select-none">&#9819;</div>
+        </div>
+        <h2 id="game-over-title" class="text-4xl font-black mb-2 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Victory!</h2>
+        <p id="game-over-subtitle" class="text-base text-white/60 mb-5">White wins by king capture</p>
+        <div class="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 mb-6 text-sm text-white/40">
+            Game completed in <span id="game-over-turns" class="text-white/70 font-semibold">0</span> turns
+        </div>
+        <div class="flex gap-3 justify-center">
+            <button id="game-over-new-game" class="btn-primary text-sm font-bold py-2.5 px-7 rounded-xl">New Game</button>
+            <button id="game-over-close" class="text-sm font-medium py-2.5 px-5 rounded-xl border border-white/[0.09] text-white/60 hover:text-white/90 transition-all" style="background:rgba(255,255,255,0.04)">Review Board</button>
+        </div>
+    </div>
+</div>
 
+<!-- SimChess modules — must load in this order -->
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clocks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/socket.js') }}"></script><script src="{{ url_for('static', filename='js/clocks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/board.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/socket.js') }}"></script></body>
 </html>

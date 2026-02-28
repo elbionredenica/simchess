@@ -1,42 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
 
 html {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+    background: linear-gradient(135deg, #09090f 0%, #130d2e 50%, #09090f 100%);
     overflow: hidden;
 }
 
 * {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Rubik', sans-serif;
 }
 
 .gradient-bg {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%);
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #09090f 100%);
 }
 
 .glass-effect {
-    background: rgba(30, 58, 138, 0.15);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(96, 165, 250, 0.2);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    background: rgba(15, 10, 45, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(129, 140, 248, 0.12);
+    box-shadow: 0 8px 32px 0 rgba(5, 2, 25, 0.55);
 }
 
 .chess-board-container {
-    box-shadow: 0 20px 60px rgba(37, 99, 235, 0.4), 0 0 80px rgba(59, 130, 246, 0.2);
+    box-shadow:
+        0 24px 64px rgba(79, 70, 229, 0.35),
+        0 0 90px rgba(99, 102, 241, 0.15);
     border-radius: 16px;
     overflow: hidden;
-    border: 2px solid rgba(96, 165, 250, 0.3);
+    border: 2px solid rgba(129, 140, 248, 0.22);
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.6);
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.6);
+    background: linear-gradient(135deg, #818cf8 0%, #6366f1 50%, #4f46e5 100%);
 }
 
 .pulse-animation {
@@ -44,15 +47,8 @@ html {
 }
 
 @keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: .5;
-    }
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .5; }
 }
 
 /* Chess Clock Styling */
@@ -61,8 +57,8 @@ html {
 }
 
 #white-clock-container.active {
-    border-color: rgba(255, 255, 255, 0.6);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.35), 0 0 40px rgba(255, 255, 255, 0.15);
 }
 
 #black-clock-container {
@@ -70,8 +66,8 @@ html {
 }
 
 #black-clock-container.active {
-    border-color: rgba(100, 116, 139, 0.8);
-    box-shadow: 0 0 20px rgba(100, 116, 139, 0.5), 0 0 40px rgba(100, 116, 139, 0.3);
+    border-color: rgba(129, 140, 248, 0.75);
+    box-shadow: 0 0 18px rgba(99, 102, 241, 0.45), 0 0 40px rgba(99, 102, 241, 0.2);
 }
 
 .clock-warning {
@@ -79,10 +75,98 @@ html {
 }
 
 @keyframes clock-pulse {
-    0%, 100% {
-        color: #ef4444;
-    }
-    50% {
-        color: #fca5a5;
-    }
+    0%, 100% { color: #f87171; }
+    50%       { color: #fca5a5; }
+}
+
+/* Scrollbar for move list */
+#move-list::-webkit-scrollbar {
+    width: 4px;
+}
+#move-list::-webkit-scrollbar-track {
+    background: rgba(99, 102, 241, 0.04);
+    border-radius: 2px;
+}
+#move-list::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.28);
+    border-radius: 2px;
+}
+#move-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(129, 140, 248, 0.5);
+}
+
+/* Clock font — mono digits stay sharp */
+#white-clock,
+#black-clock {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+
+/* Panel */
+.panel {
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Gold CTA button */
+.btn-gold {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #1a0a00;
+    font-weight: 700;
+    transition: all 0.22s ease;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35);
+}
+.btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(245, 158, 11, 0.55);
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+/* Flicker-fix: smooth fade-in when game board appears */
+#game-board-container {
+    transition: opacity 0.22s ease;
+}
+
+/* Walkthrough step dots */
+.step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: background 0.18s, transform 0.18s;
+}
+.step-dot.active {
+    background: #6366f1;
+    transform: scale(1.3);
+}
+.step-dot:hover {
+    background: rgba(99, 102, 241, 0.6);
+}
+
+/* Invite link box */
+.invite-link-box {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Rubik', monospace;
+    user-select: all;
+}
+
+/* Decorative chess symbols in welcome background */
+.chess-deco {
+    position: absolute;
+    font-size: 8rem;
+    color: rgba(99, 102, 241, 0.06);
+    pointer-events: none;
+    user-select: none;
+    line-height: 1;
 }
